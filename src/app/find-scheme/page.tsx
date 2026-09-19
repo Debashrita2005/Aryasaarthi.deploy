@@ -101,6 +101,8 @@ function FindSchemeContent() {
   const [annualFamilyIncome, setAnnualFamilyIncome] = useState<number>(300000);
   const [scCertificate, setScCertificate] = useState<'YES' | 'IN_PROGRESS' | 'NO'>('YES');
   const [courseType, setCourseType] = useState<'FULL_TIME_PROFESSIONAL' | 'OTHER'>('FULL_TIME_PROFESSIONAL');
+  const [disabilityStatus, setDisabilityStatus] = useState<'NO' | 'YES_WITH_CERT' | 'YES_NO_CERT'>('NO');
+  const [disabilityPercentage, setDisabilityPercentage] = useState<'LESS_THAN_40' | 'FORTY_OR_ABOVE' | 'UNKNOWN'>('FORTY_OR_ABOVE');
 
 
   // Loading & Result State
@@ -159,6 +161,8 @@ function FindSchemeContent() {
         if (d.annualFamilyIncome) setAnnualFamilyIncome(d.annualFamilyIncome);
         if (d.scCertificate) setScCertificate(d.scCertificate);
         if (d.courseType) setCourseType(d.courseType);
+        if (d.disabilityStatus) setDisabilityStatus(d.disabilityStatus);
+        if (d.disabilityPercentage) setDisabilityPercentage(d.disabilityPercentage);
       }
     } catch (e) {
       console.warn('Could not restore wizard draft', e);
@@ -181,13 +185,15 @@ function FindSchemeContent() {
           annualFamilyIncome,
           scCertificate,
           courseType,
+          disabilityStatus,
+          disabilityPercentage,
         };
         localStorage.setItem('sahayak_wizard_draft', JSON.stringify(draft));
       }
     } catch (e) {
       // ignore storage quota errors
     }
-  }, [step, gender, age, employmentStatus, state, areaType, purpose, projectCost, annualFamilyIncome, scCertificate, courseType]);
+  }, [step, gender, age, employmentStatus, state, areaType, purpose, projectCost, annualFamilyIncome, scCertificate, courseType, disabilityStatus, disabilityPercentage]);
 
   useEffect(() => {
     const p = searchParams.get('purpose');
@@ -254,12 +260,11 @@ function FindSchemeContent() {
     setAnnualFamilyIncome(val);
   };
 
-  const totalSteps = purpose === 'EDUCATION' ? 10 : 9;
+  const totalSteps = purpose === 'EDUCATION' ? 11 : 10;
+  const disabilityStep = totalSteps;
 
   const handleNext = () => {
-    if (step === 9 && purpose === 'EDUCATION') {
-      setStep(10); // Step 10: Course Type for education
-    } else if ((step === 9 && purpose !== 'EDUCATION') || step === 10) {
+    if (step === totalSteps) {
       handleSubmit();
     } else {
       setStep(step + 1);
@@ -291,6 +296,11 @@ function FindSchemeContent() {
     setLoading(true);
     setError(null);
 
+    const hasDisability = disabilityStatus === 'YES_WITH_CERT' || disabilityStatus === 'YES_NO_CERT';
+    const computedPercentage = hasDisability
+      ? (disabilityPercentage === 'FORTY_OR_ABOVE' ? 40 : disabilityPercentage === 'LESS_THAN_40' ? 30 : 40)
+      : 0;
+
     const payload: RecommendationRequest = {
       gender,
       age,
@@ -302,6 +312,9 @@ function FindSchemeContent() {
       annualFamilyIncome,
       scCertificate,
       courseType: purpose === 'EDUCATION' ? courseType : undefined,
+      hasDisability,
+      disabilityStatus,
+      disabilityPercentage: computedPercentage,
     };
 
     try {
@@ -1441,7 +1454,7 @@ function FindSchemeContent() {
                 <div className="space-y-4">
                   <div className="border-b border-slate-100 pb-3">
                     <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                      Question 10 of 10 (Education Confirmation)
+                      Question 10 of {totalSteps} (Education Confirmation)
                     </span>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">
                       {t.finder.courseTypeTitle}
@@ -1491,6 +1504,263 @@ function FindSchemeContent() {
                 </div>
               )}
 
+              {/* LAST QUESTION: DISABILITY STATUS & PERCENTAGE (DIVYANGJAN CONCESSIONS) */}
+              {step === disabilityStep && (
+                <div className="space-y-4">
+                  <div className="border-b border-slate-100 pb-3">
+                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                      Question {totalSteps} of {totalSteps}
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">
+                      {language === 'hi'
+                        ? 'क्या आप किसी प्रकार की दिव्यांगता से प्रभावित हैं?'
+                        : 'Do you have any disability?'}
+                    </h2>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {language === 'hi'
+                        ? 'दिव्यांगजन (PwD) नागरिकों को NDFDC एवं केंद्र सरकार की विशेष रियायती ब्याज दर, पूंजीगत सहायता एवं 0% जाति अवरोध का लाभ मिलता है।'
+                        : 'Citizens with benchmark disabilities receive concessional interest rates, priority capital assistance, and inclusive NDFDC credit.'}
+                    </p>
+                  </div>
+
+                  {/* Primary Options */}
+                  <div className="space-y-3 pt-2">
+                    {/* Option 1: No */}
+                    <button
+                      type="button"
+                      onClick={() => setDisabilityStatus('NO')}
+                      className={`touch-target w-full p-4 rounded-xl border-2 text-left flex items-center justify-between transition-all ${
+                        disabilityStatus === 'NO'
+                          ? 'border-emerald-600 bg-emerald-50/60 shadow-sm ring-1 ring-emerald-600'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            disabilityStatus === 'NO'
+                              ? 'border-emerald-600 bg-emerald-600'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {disabilityStatus === 'NO' && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        <div>
+                          <span className="font-bold text-sm text-slate-900 block">
+                            {language === 'hi' ? 'नहीं' : 'No'}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {language === 'hi'
+                              ? 'कोई दिव्यांगता नहीं है'
+                              : 'I do not have any benchmark disability'}
+                          </span>
+                        </div>
+                      </div>
+                      {disabilityStatus === 'NO' && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+                    </button>
+
+                    {/* Option 2: Yes, I have a disability certificate */}
+                    <button
+                      type="button"
+                      onClick={() => setDisabilityStatus('YES_WITH_CERT')}
+                      className={`touch-target w-full p-4 rounded-xl border-2 text-left flex items-center justify-between transition-all ${
+                        disabilityStatus === 'YES_WITH_CERT'
+                          ? 'border-emerald-600 bg-emerald-50/60 shadow-sm ring-1 ring-emerald-600'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            disabilityStatus === 'YES_WITH_CERT'
+                              ? 'border-emerald-600 bg-emerald-600'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {disabilityStatus === 'YES_WITH_CERT' && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        <div>
+                          <span className="font-bold text-sm text-slate-900 block">
+                            {language === 'hi'
+                              ? 'हाँ, मेरे पास दिव्यांगता प्रमाण पत्र है'
+                              : 'Yes, I have a disability certificate'}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {language === 'hi'
+                              ? 'सक्षम चिकित्सा प्राधिकारी / UDID कार्ड द्वारा सत्यापित'
+                              : 'Verified certificate issued by competent Medical Board or UDID card'}
+                          </span>
+                        </div>
+                      </div>
+                      {disabilityStatus === 'YES_WITH_CERT' && (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      )}
+                    </button>
+
+                    {/* Option 3: Yes, but I do not have a disability certificate */}
+                    <button
+                      type="button"
+                      onClick={() => setDisabilityStatus('YES_NO_CERT')}
+                      className={`touch-target w-full p-4 rounded-xl border-2 text-left flex items-center justify-between transition-all ${
+                        disabilityStatus === 'YES_NO_CERT'
+                          ? 'border-amber-600 bg-amber-50/60 shadow-sm ring-1 ring-amber-600'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            disabilityStatus === 'YES_NO_CERT'
+                              ? 'border-amber-600 bg-amber-600'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {disabilityStatus === 'YES_NO_CERT' && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        <div>
+                          <span className="font-bold text-sm text-slate-900 block">
+                            {language === 'hi'
+                              ? 'हाँ, लेकिन मेरे पास दिव्यांगता प्रमाण पत्र नहीं है'
+                              : 'Yes, but I do not have a disability certificate'}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {language === 'hi'
+                              ? 'दिव्यांगता है परंतु अभी औपचारिक प्रमाण पत्र जारी नहीं हुआ है'
+                              : 'Disability is present, but formal medical certificate is not yet issued'}
+                          </span>
+                        </div>
+                      </div>
+                      {disabilityStatus === 'YES_NO_CERT' && (
+                        <CheckCircle2 className="w-5 h-5 text-amber-600 shrink-0" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Sub-question if Yes (YES_WITH_CERT or YES_NO_CERT) */}
+                  {(disabilityStatus === 'YES_WITH_CERT' || disabilityStatus === 'YES_NO_CERT') && (
+                    <div className="mt-4 p-4 sm:p-5 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-3.5 animate-in fade-in duration-200">
+                      <div className="border-b border-emerald-200/60 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-700 text-white rounded-full">
+                            {language === 'hi' ? 'प्रमाण पत्र विवरण' : 'Certificate Detail'}
+                          </span>
+                        </div>
+                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 mt-1.5">
+                          {language === 'hi'
+                            ? 'प्रमाण पत्र में उल्लिखित दिव्यांगता का प्रतिशत क्या है?'
+                            : 'What is your disability percentage mentioned in the certificate?'}
+                        </h3>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          {language === 'hi'
+                            ? '40% या अधिक दिव्यांगता होने पर NDFDC दिव्यांगजन स्वरोजगार एवं रियायती ऋण योजनाओं का पूर्ण लाभ प्राप्त होता है।'
+                            : '40% or more benchmark disability under RPwD Act qualifies for apex NDFDC concessional lending schemes.'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        {/* Sub-option 1: Less than 40% */}
+                        <button
+                          type="button"
+                          onClick={() => setDisabilityPercentage('LESS_THAN_40')}
+                          className={`touch-target w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            disabilityPercentage === 'LESS_THAN_40'
+                              ? 'border-emerald-600 bg-white shadow-sm ring-1 ring-emerald-600'
+                              : 'border-slate-200 hover:border-slate-300 bg-white/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                disabilityPercentage === 'LESS_THAN_40'
+                                  ? 'border-emerald-600 bg-emerald-600'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {disabilityPercentage === 'LESS_THAN_40' && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm text-slate-900">
+                              {language === 'hi' ? '40% से कम' : 'Less than 40%'}
+                            </span>
+                          </div>
+                          {disabilityPercentage === 'LESS_THAN_40' && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          )}
+                        </button>
+
+                        {/* Sub-option 2: 40% or above */}
+                        <button
+                          type="button"
+                          onClick={() => setDisabilityPercentage('FORTY_OR_ABOVE')}
+                          className={`touch-target w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            disabilityPercentage === 'FORTY_OR_ABOVE'
+                              ? 'border-emerald-600 bg-white shadow-sm ring-1 ring-emerald-600'
+                              : 'border-slate-200 hover:border-slate-300 bg-white/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                disabilityPercentage === 'FORTY_OR_ABOVE'
+                                  ? 'border-emerald-600 bg-emerald-600'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {disabilityPercentage === 'FORTY_OR_ABOVE' && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs sm:text-sm text-slate-900">
+                                {language === 'hi' ? '40% या अधिक' : '40% or above'}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                                {language === 'hi' ? 'मानक दिव्यांगता' : 'Benchmark PwD'}
+                              </span>
+                            </div>
+                          </div>
+                          {disabilityPercentage === 'FORTY_OR_ABOVE' && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          )}
+                        </button>
+
+                        {/* Sub-option 3: I don't know */}
+                        <button
+                          type="button"
+                          onClick={() => setDisabilityPercentage('UNKNOWN')}
+                          className={`touch-target w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            disabilityPercentage === 'UNKNOWN'
+                              ? 'border-emerald-600 bg-white shadow-sm ring-1 ring-emerald-600'
+                              : 'border-slate-200 hover:border-slate-300 bg-white/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                disabilityPercentage === 'UNKNOWN'
+                                  ? 'border-emerald-600 bg-emerald-600'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {disabilityPercentage === 'UNKNOWN' && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm text-slate-900">
+                              {language === 'hi' ? 'मुझे ज्ञात नहीं है' : "I don't know"}
+                            </span>
+                          </div>
+                          {disabilityPercentage === 'UNKNOWN' && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Wizard Navigation Footer */}
               <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
                 {step > 1 ? (
@@ -1521,7 +1791,7 @@ function FindSchemeContent() {
                   <span>
                     {loading
                       ? t.common.loading
-                      : (step === 9 && purpose !== 'EDUCATION') || step === 10
+                      : step === totalSteps
                       ? t.finder.btnSubmit
                       : t.finder.btnNext}
                   </span>
@@ -1595,6 +1865,12 @@ function FindSchemeContent() {
                   <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg font-bold">
                     SC: {scCertificate === 'YES' ? (language === 'hi' ? 'सत्यापित' : 'Verified') : scCertificate === 'IN_PROGRESS' ? (language === 'hi' ? 'प्रक्रियाधीन' : 'In-Progress') : (language === 'hi' ? 'नहीं' : 'No')}
                   </span>
+                  {disabilityStatus !== 'NO' && (
+                    <span className="px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded-lg font-bold">
+                      PwD: {disabilityPercentage === 'FORTY_OR_ABOVE' ? '40%+' : disabilityPercentage === 'LESS_THAN_40' ? '<40%' : (language === 'hi' ? 'घोषित' : 'Declared')}
+                      {disabilityStatus === 'YES_WITH_CERT' ? ' (Cert)' : ''}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => setRecommendationResult(null)}

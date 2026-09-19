@@ -269,6 +269,23 @@ describe('Scheme Recommendation Engine (Deterministic)', () => {
     expect(mfs?.reasons.some(r => r.includes('Uttar Pradesh'))).toBe(true);
     expect(mfs?.reasons.some(r => r.includes('Rural'))).toBe(true);
   });
+
+  it('evaluates disability and benchmark concessions properly', () => {
+    const pwdApplicant = evaluateRecommendation({
+      purpose: 'BUSINESS',
+      projectCost: 150000,
+      annualFamilyIncome: 250000,
+      scCertificate: 'YES',
+      hasDisability: true,
+      disabilityStatus: 'YES_WITH_CERT',
+      disabilityPercentage: 40,
+    });
+
+    const mfs = pwdApplicant.results.find((r) => r.schemeCode === 'MFS');
+    expect(mfs).toBeDefined();
+    expect(mfs?.reasonCodes).toContain('BENCHMARK_DISABILITY_QUALIFIED');
+    expect(mfs?.reasons.some((r) => r.includes('Benchmark disability (40%)'))).toBe(true);
+  });
 });
 
 

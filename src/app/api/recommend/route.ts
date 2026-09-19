@@ -66,7 +66,10 @@ export async function POST(req: NextRequest) {
       employmentStatus: body.employmentStatus,
       state: body.state,
       areaType: body.areaType,
-      location: body.location || (body.state ? { state: body.state } : undefined)
+      location: body.location || (body.state ? { state: body.state } : undefined),
+      hasDisability: Boolean(body.hasDisability),
+      disabilityStatus: body.disabilityStatus,
+      disabilityPercentage: body.disabilityPercentage !== undefined && body.disabilityPercentage !== null ? Number(body.disabilityPercentage) : undefined
     };
 
 

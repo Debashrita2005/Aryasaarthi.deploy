@@ -217,6 +217,9 @@ export interface RecommendationRequest {
     state: string;
     district?: string;
   };
+  hasDisability?: boolean;
+  disabilityStatus?: 'NO' | 'YES_WITH_CERT' | 'YES_NO_CERT';
+  disabilityPercentage?: number;
 }
 
 

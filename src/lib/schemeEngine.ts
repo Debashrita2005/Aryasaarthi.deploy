@@ -78,9 +78,24 @@ export function evaluateRecommendation(
       warnings.push('Caste certificate is currently in progress; channel partners require a verified certificate before processing.');
       warningsHi.push('जाति प्रमाण पत्र प्रक्रियाधीन है; अधिकृत एजेंसी द्वारा सत्यापन के बाद ही आवेदन आगे बढ़ेगा।');
     } else {
-      // Hard statutory failure: NSFDC schemes strictly require SC status
-      passedHardFilters = false;
+      // Hard statutory failure: NSFDC schemes strictly require SC status, unless applying via parallel disability route
+      if (!scheme.eligibility_rules?.requiresBenchmarkDisability) {
+        passedHardFilters = false;
+      }
       reasonCodes.push('MISSING_SC_CERTIFICATE');
+    }
+
+    // Special Concession: Disability (Divyangjan) Provisions
+    if (request.hasDisability) {
+      if ((request.disabilityPercentage || 0) >= 40) {
+        reasonCodes.push('BENCHMARK_DISABILITY_QUALIFIED');
+        reasons.push(`Benchmark disability (${request.disabilityPercentage}%) qualifies for priority concessional lending and NDFDC assistance.`);
+        reasonsHi.push(`मानक दिव्यांगता (${request.disabilityPercentage}%) प्राथमिकता आधारित रियायती ऋण एवं NDFDC सहायता हेतु योग्य बनाती है।`);
+      } else {
+        reasonCodes.push('DISABILITY_DECLARED');
+        reasons.push('Disability declared; verified medical certification enables applicable concessional benefits.');
+        reasonsHi.push('दिव्यांगता घोषित; चिकित्सा प्रमाण पत्र के आधार पर लागू रियायती लाभ प्रदान किए जाते हैं।');
+      }
     }
 
     // Hard Filter 2: Statutory Income Ceiling (Official: ₹5,00,000/year)
