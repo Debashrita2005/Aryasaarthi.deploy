@@ -1,0 +1,26 @@
+{
+  "project": "Sahayak",
+  "generated_on": "2026-09-11",
+  "documents": [
+    "README.md",
+    "PRD.md",
+    "UI_UX.md",
+    "ARCHITECTURE.md",
+    "DATA_MODEL.md",
+    "API_SPEC.md",
+    "AI_SCHEME_ENGINE.md",
+    "FINANCIAL_CALCULATOR.md",
+    "GEO_ROUTING.md",
+    "CONTENT_GUIDELINES.md",
+    "ACCESSIBILITY.md",
+    "SECURITY_PRIVACY.md",
+    "TESTING.md",
+    "DEPLOYMENT.md",
+    "CHANGE_DECISION.md",
+    "ACCEPTANCE_CHECKLIST.md",
+    "AGENT_PROMPT.md",
+    "SOURCE_NOTES.md"
+  ],
+  "official_reference": "https://nsfdc.nic.in/",
+  "important": "Revalidate financial/eligibility rules against current official sources before production."
+}

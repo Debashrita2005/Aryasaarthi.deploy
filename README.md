@@ -1,4 +1,4 @@
-#  AryaSaarthi - Sahi Vyakti Sahi Yojna Sahi Marg
+# AryaSaarthi — Sahi Vyakti. Sahi Yojna. Sahi Marg.
 
 ## Your Digital Guide To The Right Government Scheme
 
@@ -9,14 +9,13 @@ Instead of making citizens search through multiple portals, AryaSaarthi provides
 ---
 
 ## 🚀 Problem Statement SIH26092
-AI-Driven Scheme Matching for Marginalized Entrepreneurs
-Organization-	Ministry of Social Justice and Empowerment (MoSJE)
-Department	-Department of Social Justice and Empowerment
-Category	-Software
-Theme	Smart- Automation
+**AI-Driven Scheme Matching for Marginalized Entrepreneurs**
+- **Organization:** Ministry of Social Justice and Empowerment (MoSJE)
+- **Department:** Department of Social Justice and Empowerment
+- **Category:** Software
+- **Theme:** Smart Automation
 
 Many eligible beneficiaries are unable to access government support because of:
-
 - Lack of awareness about suitable schemes
 - Complex eligibility criteria
 - Difficulty understanding financial options
@@ -27,19 +26,19 @@ The challenge is not the availability of schemes, but making them accessible and
 
 ---
 
-# 💡 Solution: AryaSaarthi
+## 💡 Solution: AryaSaarthi
 
 AryaSaarthi bridges the gap between citizens and government support through:
 
 ### 🤖 AskArya AI Assistant
 - Text and voice-based assistance
-- Understands user needs naturally
+- Understands user needs naturally in 22+ Scheduled Indian Languages + English
 - Guides users about schemes, eligibility, documents, and application process
 
 ### 🎯 Smart Scheme Recommendations
 - Matches beneficiaries with suitable schemes
 - Uses profile-based eligibility analysis
-- Provides explainable recommendations
+- Provides transparent and explainable recommendations
 
 ### 📊 Financial Guidance
 - Indicative EMI calculation
@@ -48,113 +47,48 @@ AryaSaarthi bridges the gap between citizens and government support through:
 
 ### 📍 Geo-Mapped Assistance
 - Finds nearby:
-  - Banks
-  - CSC centres
-  - Government offices
-  - Support agencies
+  - Authorized State Channelizing Agencies (SCAs)
+  - Banks & RRBs
+  - CSC centres & Government offices
 
 ### 🌐 Inclusive Access
-- Multilingual support
-- Voice assistance
-- Offline-first architecture for low-connectivity regions
+- Multilingual support across 23 languages
+- Real-time Speech-to-Text & Voice assistance
+- Low-bandwidth & mobile-responsive architecture
 
 ---
 
----
-
-# 🧠 AI Approach
+## 🧠 AI Approach
 
 AryaSaarthi uses a hybrid intelligence model:
-
-- AI/NLP for understanding user conversations
-- Rule-based engine for accurate eligibility matching
-- Explainable recommendations to show "Why this scheme?"
-
-AI assists decision-making while maintaining transparency and reliability.
+- **Natural Language Processing & Voice:** Bhashini ASR/TTS & multilingual dialogue intent parsing
+- **Rule-Based Engine:** Deterministic, transparent eligibility matching for NSFDC schemes
+- **Explainable Recommendations:** Highlights exact criteria match reasons (*Sahi Vyakti $\rightarrow$ Sahi Yojna $\rightarrow$ Sahi Marg*)
 
 ---
-# 👨‍💻 Team AryaSaarthi
+
+## 👨‍💻 Team AryaSaarthi
 
 | Name | Role |
-|------|------|
-| Anand Kumar Jha     | Team Leader & Full Stack Lead |
-| Aditya Singh        | AI/ML Lead & Intelligence System Architect |
-| Debashrita Mandal   | Backend & Product Architect  |
-| Aaryan Lal Das      | Research & Documentation Lead |
-| Tiyasha Chaterjee   | Backend & Testing Lead|
-| Agneev Shee         | Frontend & UI/UX Lead |
-# 🛠️ Tech Stack 
-
-## Frontend
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Progressive Web App (PWA)
-
-## Backend
-- FastAPI
-- Python
-- REST APIs
-
-## AI & NLP
-- AskArya AI
-- spaCy
-- Sentence Transformers
-- Recommendation Engine
-
-## Database
-- PostgreSQL
-- MongoDB
-
-## Voice & Language
-- MeitY Bhashini API
-- Speech-to-Text
-- Text-to-Speech
-
-## Maps
-- Leaflet
-- OpenStreetMap
-
-## Security & Deployment
-- Firebase Authentication
-- Docker
-- Cloud Deployment
+| :--- | :--- |
+| **Anand Kumar Jha** | Team Leader & Full Stack Lead |
+| **Aditya Singh** | AI/ML Lead & Intelligence System Architect |
+| **Debashrita Mandal** | Backend & Product Architect |
+| **Aaryan Lal Das** | Research & Documentation Lead |
+| **Tiyasha Chaterjee** | Backend & Testing Lead |
+| **Agneev Shee** | Frontend & UI/UX Lead |
 
 ---
 
-# 🌟 Key Innovation
+## 🛠️ Tech Stack 
 
-Unlike traditional scheme portals that mainly provide information, AryaSaarthi provides:
-
-**Discovery → Understanding → Financial Planning → Assistance → Action**
-
-It transforms scheme discovery from a manual search process into a personalized guidance experience.
-
----
-
-# 📈 Impact
-
-- Faster identification of relevant government schemes
-- Better understanding of eligibility and benefits
-- Improved access to financial guidance
-- Reduced information gap between schemes and beneficiaries
-- Greater inclusion through voice, multilingual and offline support
-- Scalable across different schemes and regions
-
----
-
-# 🔮 Future Scope
-
-- More regional language support
-- Advanced voice-first rural assistant
-- Integration with additional government ecosystems
-- Mobile application with enhanced offline capabilities
+- **Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS, Lucide Icons
+- **Backend & APIs:** Next.js API Routes, FastAPI / Python, Prisma ORM, SQLite / PostgreSQL
+- **AI & Dialogue Engine:** AskArya Engine, Multi-turn Dialogue State Tracker, TF-IDF + Deterministic Rules
+- **Voice & Localization:** MeitY Bhashini API, Web Speech Recognition, 23 Indian Languages
+- **Authentication:** Firebase Phone Auth (Carrier SMS OTP) & Google OAuth
 
 ---
 
 ## Built For Social Impact 🇮🇳
-
 **AryaSaarthi — Sahi Vyakti. Sahi Yojna. Sahi Marg.**
-
-# 🏗️ System Workflow

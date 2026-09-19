@@ -1,0 +1,17 @@
+{
+  "name": "Sahayak — NSFDC Scheme Discovery",
+  "short_name": "Sahayak",
+  "description": "Rural-first, multilingual scheme finder and repayment calculator for NSFDC credit & education schemes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#15803d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

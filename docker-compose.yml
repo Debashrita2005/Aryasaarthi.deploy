@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 1. MongoDB Database (with persistent volume)
+  mongodb:
+    image: mongo:7.0
+    container_name: aryasaarthi_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: sahayak_nsfdc
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - aryasaarthi_net
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh 127.0.0.1:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Python FastAPI Rule Engine Microservice
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aryasaarthi_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017/sahayak_nsfdc
+      - MONGODB_DB_NAME=sahayak_nsfdc
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - aryasaarthi_net
+
+  # 3. Next.js Frontend & Public Portal
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aryasaarthi_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PYTHON_ENGINE_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - aryasaarthi_net
+
+volumes:
+  mongo_data:
+
+networks:
+  aryasaarthi_net:
+    driver: bridge

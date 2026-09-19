@@ -1,0 +1,238 @@
+// AryaSaarthi — Prisma 5 Schema
+// SQLite locally, swap DATABASE_URL for PostgreSQL on production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id
+  name       String
+  phone      String?
+  email      String?
+  authMethod String
+  role             String   @default("beneficiary")
+  gender           String?  // MALE, FEMALE, TRANSGENDER, OTHER
+  state            String?
+  district         String?
+  profileCompleted Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  searches      SearchRecord[]
+  savedSchemes  SavedScheme[]
+  inquiries     SchemeInquiry[]
+  notifications SchemeNotification[]
+}
+
+model SearchRecord {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose               String
+  projectCost           Int
+  annualIncome          Int
+  scCertificate         String
+  courseType            String?
+  gender                String?
+  age                   Int?
+  employmentStatus      String?
+  state                 String?
+  areaType              String?
+  recommendedSchemeId   String?
+  recommendedSchemeName String?
+  fitScore              Float?
+  matchedRule           String?
+  alternativesJson      String?
+  createdAt             DateTime @default(now())
+
+
+  @@index([userId, createdAt])
+}
+
+model SavedScheme {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schemeId   String
+  schemeCode String
+  schemeName String
+  fitScore   Float?
+  notes      String?
+  savedAt    DateTime @default(now())
+
+  @@unique([userId, schemeId])
+  @@index([userId])
+}
+
+model SchemeRateSnapshot {
+  id                  String   @id @default(cuid())
+  schemeCode          String
+  schemeName          String
+  snapshotVersion     String
+  interestRateMin     Float
+  interestRateMax     Float
+  rebateWomenPct      Float?
+  maxLoanAmount       Int
+  repaymentMonths     Int
+  changeDetected      Boolean  @default(false)
+  changeDescription   String?
+  previousRateMin     Float?
+  previousRateMax     Float?
+  previousMaxLoan     Int?
+  previousRepayment   Int?
+  checkedAt           DateTime @default(now())
+
+  @@index([schemeCode, checkedAt])
+  @@index([changeDetected, checkedAt])
+}
+
+model PendingSchemeUpdate {
+  id                  String    @id @default(cuid())
+  schemeCode          String
+  schemeName          String
+  provider            String
+  sourceUrl           String
+  status              String    @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED
+  oldInterestRateMin  Float?
+  newInterestRateMin  Float
+  oldInterestRateMax  Float?
+  newInterestRateMax  Float
+  oldMaxLoan          Int?
+  newMaxLoan          Int?
+  oldRepaymentMonths  Int?
+  newRepaymentMonths  Int?
+  changeSummary       String
+  confidenceScore     Float     @default(0.95)
+  isPublished         Boolean   @default(false)
+  reviewNotes         String?
+  reviewedBy          String?
+  detectedAt          DateTime  @default(now())
+  reviewedAt          DateTime?
+
+  @@index([status, detectedAt])
+  @@index([schemeCode])
+}
+
+model ActiveSchemeOverride {
+  id                  String    @id @default(cuid())
+  schemeCode          String    @unique
+  schemeName          String
+  interestRateMin     Float
+  interestRateMax     Float
+  maxLoanAmount       Int
+  repaymentMonths     Int
+  rebateWomenPct      Float?
+  sourceProvider      String
+  sourceUrl           String
+  approvedBy          String
+  approvedAt          DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model VerifiedScheme {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  slug              String   @unique
+  name              String
+  nameHi            String?
+  level             String   // CENTRAL or STATE_UT
+  state             String?  // Name of state/UT or null for Central
+  category          String   // SCHOLARSHIP, FELLOWSHIP, EDUCATION, HOSTEL, COACHING, ENTERPRISE, GUARANTEE, LOAN, LIVELIHOOD, HOUSING, MARRIAGE, RELIEF, CORPORATION
+  typeLabel         String   // e.g. "Scholarship", "Fellowship", "Loan", "Enterprise"
+  eligibility       String   // Eligibility / key conditions
+  documentsJson     String   // JSON string of document checklist
+  officialRoute     String   // e.g. "scholarships.gov.in", "nosmsje.gov.in"
+  officialSourceUrl String   // Canonical portal url
+  verifiedAt        String   @default("2026-09")
+  lastVerifiedDate  String   @default("17 Sep 2026")
+  status            String   @default("VERIFIED_ACTIVE")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([level, state])
+  @@index([category])
+  @@index([code])
+}
+
+model SchemeProvider {
+  id                        String          @id @default(cuid())
+  code                      String          @unique
+  name                      String
+  nameHi                    String?
+  partnerType               String          // SCA, BANK, RRB, OTHER
+  state                     String
+  district                  String
+  address                   String
+  pincode                   String?
+  phone                     String?
+  email                     String?
+  latitude                  Float
+  longitude                 Float
+  supportedSchemesJson      String          // e.g. '["MFS","AMY","TLS","ELS"]'
+  npaPercentage             Float           @default(4.2)
+  fundUtilizationPercentage Float           @default(68.0)
+  overdueFlag               Boolean         @default(false)
+  operationalStatus         String          @default("active")
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  inquiries                 SchemeInquiry[]
+
+  @@index([state, district])
+  @@index([partnerType])
+}
+
+model SchemeInquiry {
+  id                  String          @id @default(cuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schemeCode          String
+  schemeName          String
+  schemeCategory      String?
+  purpose             String?
+  requestedLoanAmount Int?
+  projectCost         Int?
+  providerId          String?
+  provider            SchemeProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerName        String?
+  providerDistrict    String?
+  status              String          @default("INQUIRY_SUBMITTED") // INQUIRY_SUBMITTED, ELIGIBLE_CONFIRMED, DOCUMENTS_PREPARED, FORWARDED_TO_PARTNER, SANCTIONED
+  applicantPhone      String?
+  applicantState      String?
+  applicantDistrict   String?
+  notes               String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([schemeCode])
+  @@index([status])
+}
+
+model SchemeNotification {
+  id              String   @id @default(cuid())
+  userId          String?  // null means broadcast to all users
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schemeCode      String
+  schemeName      String
+  title           String
+  titleHi         String?
+  message         String
+  messageHi       String?
+  changeType      String   // INTEREST_RATE, ELIGIBILITY_REVISION, DOCUMENT_UPDATE, NEW_PORTAL_ROUTE
+  oldValue        String?
+  newValue        String?
+  verifiedDate    String   @default("17 Sep 2026")
+  sourceUrl       String   // e.g. "https://nsfdc.nic.in"
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([schemeCode, createdAt])
+}
