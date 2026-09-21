@@ -73,8 +73,17 @@ AryaSaarthi uses a hybrid intelligence model:
 AI assists decision-making while maintaining transparency and reliability.
 
 ---
+# 👨‍💻 Team AryaSaarthi
 
-# 🛠️ Tech Stack
+| Name | Role |
+|------|------|
+| Anand Kumar Jha     | Team Leader & Full Stack Lead |
+| Aditya Singh        | AI/ML Lead & Intelligence System Architect |
+| Debashrita Mandal   | Backend & Product Architect  |
+| Aaryan Lal Das      | Research & Documentation Lead |
+| Tiyasha Chaterjee   | Backend & Testing Lead|
+| Agneev Shee         | Frontend & UI/UX Lead |
+# 🛠️ Tech Stack 
 
 ## Frontend
 - Next.js
