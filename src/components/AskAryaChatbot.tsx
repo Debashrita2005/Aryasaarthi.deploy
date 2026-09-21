@@ -464,7 +464,7 @@ export function AskAryaChatbot() {
                 <div className="w-10 h-10 rounded-full bg-white border-2 border-white shadow-sm overflow-hidden shrink-0">
                   <Image
                     src="/arya_dp.jpg"
-                    alt="AskArya AI DP"
+                    alt="AskArya DP"
                     width={40}
                     height={40}
                     className="w-full h-full object-cover"
@@ -472,10 +472,10 @@ export function AskAryaChatbot() {
                 </div>
                 <div className="flex flex-col">
                   <h3 className="text-sm font-bold leading-tight text-slate-800">
-                    AskArya AI
+                    AskArya
                   </h3>
                   <span className="text-[10px] text-emerald-700 font-medium">
-                    Your Personal Guide to the Right Government Support
+                    Your Personal Guide to the Right Government Scheme
                   </span>
                 </div>
               </div>
@@ -973,7 +973,7 @@ export function AskAryaChatbot() {
                 </div>
                 <div className="bg-slate-50 border border-slate-100/60 p-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-[11px]">AskArya AI is typing...</span>
+                  <span className="text-[11px]">AskArya is typing...</span>
                 </div>
               </div>
             )}
