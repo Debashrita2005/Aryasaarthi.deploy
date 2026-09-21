@@ -13,6 +13,7 @@ export interface ChatSessionSlots {
   purpose: string | null;
   project_type: string | null;
   amount: number | null;
+  moratorium_months?: number | null;
   state: string | null;
   district: string | null;
 }
@@ -85,7 +86,8 @@ function parseAmount(text: string): number | null {
     return Math.round(parseFloat(croreMatch[1]) * 10000000);
   }
 
-  const digitMatches = norm.match(/\b\d{4,8}\b/g);
+  const cleanNorm = norm.replace(/,/g, '');
+  const digitMatches = cleanNorm.match(/\b\d{4,8}\b/g);
   if (digitMatches) {
     const val = parseInt(digitMatches[0], 10);
     if (val >= 5000) return val;
@@ -217,8 +219,8 @@ function extractTradeFromText(text: string, norm: string): { tradeMention: strin
     tradeMention = "goat farming & livestock";
     projectType = "goat_rearing";
     projectLabel = "Goat & Sheep Rearing";
-  } else if (/\b(dairy|cow\w*|buffalo\w*|gay|bhains|milk|doodh|pashupalan)\b/i.test(norm)) {
-    tradeMention = "dairy cattle & milk production";
+  } else if (/\b(dairy|deri\w*|cow\w*|buffalo\w*|gay|bhains|milk|doodh|pashupalan)\b/i.test(norm)) {
+    tradeMention = "dairy farming & livestock";
     projectType = "dairy";
     projectLabel = "Dairy & Cattle Farming";
   } else if (/\b(poultry|murgi|chicken|egg\w*)\b/i.test(norm)) {
@@ -404,7 +406,7 @@ function extractSlots(text: string, currentSlots: ChatSessionSlots, lastQuestion
     }
   }
 
-  // 5. Amount (Loan Amount or Income)
+  // 5. Amount (Loan Amount or Income) & Moratorium Period
   const parsedAmt = parseAmount(text);
   if (parsedAmt !== null) {
     if (lastQuestionAsked === 'INCOME' || /\b(income|aay|salana|kamai|salary|earning)\b/i.test(norm)) {
@@ -419,6 +421,19 @@ function extractSlots(text: string, currentSlots: ChatSessionSlots, lastQuestion
       } else if (!slots.income) {
         slots.income = parsedAmt;
         newlyDetected.push('income');
+      }
+    }
+  }
+
+  // Moratorium period parsing (e.g. "6 Months Moratorium", "12 months", "18m", "grace period 6 months")
+  const moratMatch = norm.match(/(\d{1,2})\s*(?:months?|m|mahine)\s*(?:moratorium|grace period|holiday)?/i) ||
+                     norm.match(/(?:moratorium|grace period|holiday)\s*(?:of|for)?\s*(\d{1,2})\s*(?:months?|m|mahine)?/i);
+  if (moratMatch) {
+    const mVal = parseInt(moratMatch[1], 10);
+    if (mVal >= 1 && mVal <= 60) {
+      if (slots.moratorium_months !== mVal) {
+        slots.moratorium_months = mVal;
+        newlyDetected.push('moratorium_months');
       }
     }
   }
@@ -891,13 +906,14 @@ function generateDynamicSynthesizedResponse(
 
   // Handle newly detected slots with specific, informative government welfare context:
   if (newlyDetected.includes('amount') && slots.amount) {
+    const moratText = slots.moratorium_months ? ` with a **${slots.moratorium_months}-month repayment moratorium (grace period)**` : '';
     if (slots.amount <= 140000) {
       responseParts.push(
-        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}:** This falls comfortably within the statutory **Micro Finance Scheme** and **Mahila Samriddhi Yojana (MSY)** limit of up to ₹1,40,000. These programs are **100% collateral-free**, qualify for up to **50% government subsidy**, and offer low interest rates between **4% and 5% p.a.**`
+        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This falls comfortably within the statutory **Micro Finance Scheme** and **Mahila Samriddhi Yojana (MSY)** limit of up to ₹1,40,000. These programs are **100% collateral-free**, qualify for up to **50% government subsidy**, and offer low interest rates between **4% and 5% p.a.**`
       );
     } else {
       responseParts.push(
-        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}:** This is covered under the statutory **Term Loan Scheme (TLS)** (up to ₹50 Lakh), providing up to 95% total project cost financing at concessional interest rates of **6% to 8% p.a.** with a repayment moratorium.`
+        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This is covered under the statutory **Term Loan Scheme (TLS)** (up to ₹50 Lakh), providing up to 95% total project cost financing at concessional interest rates of **6% to 8% p.a.** with a repayment moratorium.`
       );
     }
   }
@@ -994,10 +1010,16 @@ function generateDynamicSynthesizedResponse(
     const tradeRef = effectiveTrade || 'your venture';
     const amtRepeat = getRepeatCount("AMOUNT");
     if (amtRepeat === 0) {
-      nextQuestion = `To determine whether **Micro Finance (up to ₹1.4 Lakh)** or a **Term Loan (up to ₹50 Lakh)** fits best for ${tradeRef}, **approximately how much total loan or funding do you need?**`;
-      quickReplies = ["₹50,000", "₹1,00,000", "₹2,50,000", "₹5,00,000", "₹10,00,000+"];
+      nextQuestion = `To determine the best scheme for ${tradeRef}, **how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?**`;
+      quickReplies = [
+        "₹50,000 (6 Months Moratorium)",
+        "₹1,00,000 (12 Months Moratorium)",
+        "₹1,40,000 (18 Months Moratorium)",
+        "₹5,00,000 (24 Months Moratorium)",
+        "₹10,00,000+ (36 Months Moratorium)"
+      ];
     } else if (amtRepeat === 1) {
-      nextQuestion = `If you're not sure about the exact budget for ${tradeRef}, that's completely fine! Most applicants start with the standard **₹1,40,000 Micro Loan** (100% collateral-free at 4%–5% interest with up to 50% subsidy). Would you like to use that as your benchmark, or explore schemes directly?`;
+      nextQuestion = `If you're not sure about the exact budget for ${tradeRef}, that's completely fine! Most applicants start with the standard **₹1,40,000 Micro Loan (12–18 Months Moratorium)** (100% collateral-free at 4%–5% interest with up to 50% subsidy). Would you like to use that as your benchmark, or explore schemes directly?`;
       quickReplies = ["Use ₹1.4 Lakh Benchmark", "₹50,000 Small Credit", "₹5 Lakh+ Term Loan", "Skip & Show Schemes"];
     } else {
       questionType = "RECOMMENDATION";
@@ -1150,6 +1172,7 @@ export async function processChatTurn(
   if (!session) {
     session = {
       slots: {
+        user_name: null,
         sc_status: null,
         gender: null,
         is_pwd: null,
@@ -1157,6 +1180,7 @@ export async function processChatTurn(
         purpose: null,
         project_type: null,
         amount: null,
+        moratorium_months: null,
         state: null,
         district: null,
       },
@@ -1190,6 +1214,7 @@ export async function processChatTurn(
       purpose: null,
       project_type: null,
       amount: null,
+      moratorium_months: null,
       state: null,
       district: null,
     };
@@ -1292,6 +1317,7 @@ export function resetChatSession(sessionId: string): ChatSessionSlots {
     purpose: null,
     project_type: null,
     amount: null,
+    moratorium_months: null,
     state: null,
     district: null,
   };

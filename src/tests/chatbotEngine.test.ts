@@ -53,14 +53,14 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     const res = await processChatTurn(sessionId, 'I am a widow and single mother, I want to start a tailoring boutique');
     expect(res.reply).toContain('respect your courage');
     expect(res.reply).toContain('Mahila Samriddhi Yojana');
-    expect(res.reply).toContain('how much total loan or funding do you need');
+    expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium');
   });
 
   it('8. Dynamically handles existing business expansion (expanding goat farm)', async () => {
     const res = await processChatTurn(sessionId, 'I already have 5 goats and want to expand my farm');
     expect(res.reply).toContain('Expanding your existing');
     expect(res.reply).toContain('goat farming & livestock');
-    expect(res.reply).toContain('how much total loan or funding do you need');
+    expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium');
   });
 
   it('9. Handles certificates question and advises on e-District portal', async () => {
@@ -142,12 +142,12 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
   it('16. Anti-repetition prevents looping on missing slots', async () => {
     // Turn 1: user mentions dairy
     const t1 = await processChatTurn(sessionId, 'dairy business');
-    expect(t1.reply).toContain('approximately how much total loan or funding do you need?');
+    expect(t1.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
 
     // Turn 2: user says something open-ended without amount
     const t2 = await processChatTurn(sessionId, 'tell me more about this');
     // Must NOT repeat the exact same prompt
-    expect(t2.reply).not.toContain('approximately how much total loan or funding do you need?');
+    expect(t2.reply).not.toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
     expect(t2.reply).toContain('If you\'re not sure about the exact budget');
 
     // Turn 3: user again doesn't provide amount
@@ -162,7 +162,7 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     const t1 = await processChatTurn(sessionId, 'I want to start a grocery shop');
     expect(t1.reply).toContain('Your vision for retail grocery / kirana shop is very well aligned');
     expect(t1.reply).toContain('Basic Details Required for Scheme Recommendation:');
-    expect(t1.reply).toContain('approximately how much total loan or funding do you need?');
+    expect(t1.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
 
     // Turn 2: User provides amount
     const t2 = await processChatTurn(sessionId, '1 lakh');
@@ -208,7 +208,7 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).toContain('saree & apparel business');
     expect(res.reply).not.toContain('Dairy');
     expect(res.reply).toContain('Basic Details Required for Scheme Recommendation:');
-    expect(res.reply).toContain('approximately how much total loan or funding do you need?');
+    expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
     expect(res.matched_schemes.length).toBe(0); // Schemes must NOT be shown prematurely before details are filled!
   });
 
@@ -224,6 +224,9 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).not.toContain('Sneha');
     expect(res.slots.user_name).toBe('Aditya');
     expect(res.slots.gender).toBe('MALE');
+    expect(res.reply).toContain('what type of business, venture, or educational scheme are you looking to start?');
+    expect(res.quick_replies).toContain('Small Business / Retail Shop');
+    expect(res.quick_replies).toContain('Dairy / Animal Husbandry');
   });
 
   it('21. Pure greeting wipes any prior user name or trade context', async () => {
@@ -246,5 +249,53 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).toContain('retail grocery / kirana shop');
     expect(res.slots.user_name).toBe('Aditya Singh');
     expect(res.slots.gender).toBe('MALE');
+    expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium');
+  });
+
+  it('23. Strict answering pattern: Name -> Ask Loan Type -> Mention Category -> Ask Amount & Moratorium', async () => {
+    const testSid = 'sid_strict_answering_pattern_' + Date.now();
+
+    // Step 1: User introduces name only
+    const turn1 = await processChatTurn(testSid, 'Mera naam Amit hai');
+    expect(turn1.reply).toContain('Namaste Amit ji! I am Arya');
+    expect(turn1.reply).toContain('what type of business, venture, or educational scheme are you looking to start?');
+    expect(turn1.quick_replies).toEqual([
+      "Small Business / Retail Shop",
+      "Dairy / Animal Husbandry",
+      "Tailoring / Boutique Unit",
+      "Higher Education Loan",
+      "Electric Auto / Transport"
+    ]);
+
+    // Step 2: User specifies category/venture
+    const turn2 = await processChatTurn(testSid, 'deri ka dukaan');
+    expect(turn2.reply).toContain('Namaste Amit ji!');
+    expect(turn2.reply).toContain('dairy farming & livestock');
+    expect(turn2.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
+    expect(turn2.quick_replies).toEqual([
+      "₹50,000 (6 Months Moratorium)",
+      "₹1,00,000 (12 Months Moratorium)",
+      "₹1,40,000 (18 Months Moratorium)",
+      "₹5,00,000 (24 Months Moratorium)",
+      "₹10,00,000+ (36 Months Moratorium)"
+    ]);
+
+    // Step 3: User selects amount & moratorium
+    const turn3 = await processChatTurn(testSid, '₹1,00,000 (12 Months Moratorium)');
+    expect(turn3.slots.amount).toBe(100000);
+    expect(turn3.slots.moratorium_months).toBe(12);
+    expect(turn3.reply).toContain('Noted your funding requirement of ₹1,00,000 with a **12-month repayment moratorium (grace period)**');
+    expect(turn3.reply).toContain('Scheduled Caste (SC) community?');
+  });
+
+  it('24. Compound introduction (Name + Category) directly moves to Amount & Moratorium', async () => {
+    const testSid = 'sid_compound_name_cat_' + Date.now();
+    const res = await processChatTurn(testSid, 'hello mera naam amit hai aur main deri ka dukaan kholna chahta hun');
+
+    expect(res.reply).toContain('Namaste Amit ji! I am Arya');
+    expect(res.reply).toContain('dairy farming & livestock');
+    expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
+    expect(res.quick_replies).toContain('₹1,00,000 (12 Months Moratorium)');
+    expect(res.quick_replies).toContain('₹1,40,000 (18 Months Moratorium)');
   });
 });
