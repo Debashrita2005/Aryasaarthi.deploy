@@ -22,7 +22,6 @@ import {
   ExternalLink,
   ChevronRight,
   LogOut,
-  Smartphone,
   Bot,
 } from 'lucide-react';
 
@@ -107,19 +106,6 @@ export function Navbar() {
                 </Link>
               );
             })}
-            <Link
-              href="/mobile"
-              className={`ml-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                pathname === '/mobile'
-                  ? 'bg-emerald-600 text-white font-extrabold'
-                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold'
-              }`}
-              title="Interactive Mobile Simulator"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Mobile View</span>
-            </Link>
-
             <button
               type="button"
               onClick={() => {
@@ -285,17 +271,6 @@ export function Navbar() {
 
                 {/* Additional Quick Links */}
                 <div className="pt-3 mt-3 border-t border-slate-100 space-y-1">
-                  <Link
-                    href="/mobile"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-emerald-600" />
-                      <span>{'Mobile Simulator View'}</span>
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
-                  </Link>
                   <Link
                     href="/privacy"
                     onClick={() => setMobileMenuOpen(false)}
