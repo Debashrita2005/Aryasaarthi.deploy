@@ -38,7 +38,6 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(0);
-  const [demoCode, setDemoCode] = useState<string | null>(null);
 
   // Status & Feedback
   const [loading, setLoading] = useState(false);
@@ -81,13 +80,10 @@ export default function LoginPage() {
       if (res.success) {
         setOtpSent(true);
         setResendTimer(30);
-        if (res.demoOtp) {
-          setDemoCode(res.demoOtp);
-        }
         setSuccessMsg(
           language === 'hi'
-            ? `ओटीपी आपके मोबाइल नंबर +91 ${clean} पर भेजा गया है`
-            : `OTP sent to mobile +91 ${clean}`
+            ? `ओटीपी आपके मोबाइल नंबर +91 ${clean} पर एसएमएस द्वारा भेजा गया है। कृपया अपने संदेश (Messages) देखें।`
+            : `OTP sent via SMS to mobile number +91 ${clean}. Please check your messages.`
         );
         // Focus on first OTP input
         setTimeout(() => {
@@ -149,12 +145,10 @@ export default function LoginPage() {
       if (res.success) {
         setSuccessMsg(
           language === 'hi'
-            ? 'सत्यापन सफल! आर्यसारथी नागरिक पोर्टल में आपका स्वागत है।'
-            : 'Verification successful! Welcome to AryaSaarthi Citizen Portal.'
+            ? 'सत्यापन सफल! मुख्य पृष्ठ पर ले जाया जा रहा है...'
+            : 'Verification successful! Redirecting to Home page...'
         );
-        setTimeout(() => {
-          router.push('/find-scheme');
-        }, 1200);
+        router.push('/');
       } else {
         setErrorMsg(res.error || 'Invalid OTP code');
       }
@@ -165,36 +159,22 @@ export default function LoginPage() {
     }
   };
 
-  // One-click Auto-fill for Testing Demo Code
-  const handleAutoFillDemo = () => {
-    if (!demoCode) return;
-    const digits = demoCode.split('');
-    setOtpDigits(digits);
-    executeVerifyOtp(demoCode);
-  };
-
-  // Handle Google Login
+  // Handle Google Login -> Navigate directly to Home Page
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
     setLoading(true);
     try {
-      await loginWithGoogle({
-        name: 'Aditya Singh',
-        email: 'aditya.singh.nsfdc@gmail.com',
-        role: 'beneficiary',
-        district: 'Lucknow',
-        state: 'Uttar Pradesh',
-      });
-      setSuccessMsg(
-        language === 'hi'
-          ? 'गूगल द्वारा सफल लॉगिन! आपका स्वागत है।'
-          : 'Successfully signed in with Google! Welcome.'
-      );
-      setTimeout(() => {
-        router.push('/find-scheme');
-      }, 1000);
+      const loggedInUser = await loginWithGoogle();
+      if (loggedInUser) {
+        setSuccessMsg(
+          language === 'hi'
+            ? 'गूगल लॉगिन सफल! मुख्य पृष्ठ पर ले जाया जा रहा है...'
+            : 'Google Sign-in successful! Redirecting to Home page...'
+        );
+        router.push('/');
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Google Sign-in failed');
+      setErrorMsg(err.message || 'Google Sign-in failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -413,10 +393,17 @@ export default function LoginPage() {
                             <span>+91</span>
                           </div>
                           <input
+                            id="mobile-phone-input"
                             type="tel"
-                            maxLength={10}
+                            maxLength={14}
                             value={phoneInput}
-                            onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, ''))}
+                            onChange={(e) => {
+                              // Strip non-digits and handle pasted +91 or leading 91
+                              const raw = e.target.value.replace(/\D/g, '');
+                              const trimmed = raw.startsWith('91') && raw.length > 10 ? raw.slice(2, 12) : raw.slice(0, 10);
+                              setPhoneInput(trimmed);
+                              if (errorMsg) setErrorMsg(null);
+                            }}
                             placeholder="9876543210"
                             className="w-full px-4 py-3 text-sm font-bold tracking-wider text-slate-900 placeholder-slate-400 focus:outline-none"
                             autoComplete="tel"
@@ -434,13 +421,10 @@ export default function LoginPage() {
                       <div id="recaptcha-container" className="my-1"></div>
 
                       <button
+                        id="btn-get-otp"
                         type="submit"
-                        disabled={loading || phoneInput.length !== 10}
-                        className={`w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 text-white shadow-sm transition-all ${
-                          loading || phoneInput.length !== 10
-                            ? 'bg-slate-300 cursor-not-allowed'
-                            : 'bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99]'
-                        }`}
+                        disabled={loading}
+                        className="w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 text-white shadow-sm transition-all bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] cursor-pointer shadow-emerald-700/20"
                       >
                         {loading ? (
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -461,7 +445,6 @@ export default function LoginPage() {
                           onClick={() => {
                             setOtpSent(false);
                             setOtpDigits(['', '', '', '', '', '']);
-                            setDemoCode(null);
                           }}
                           className="inline-flex items-center gap-1.5 text-slate-700 hover:text-emerald-700 font-bold text-xs transition-colors bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
                         >
@@ -473,27 +456,15 @@ export default function LoginPage() {
                         </span>
                       </div>
 
-                      {/* Demo OTP Helper Pill for 1-click test */}
-                      {demoCode && (
-                        <div className="p-3 bg-amber-50/90 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-2 shadow-xs">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span className="text-xs text-amber-900 font-bold truncate">
-                              {t.login.demoOtp}{' '}
-                              <span className="tracking-widest font-mono bg-white px-2 py-0.5 rounded border border-amber-300">
-                                {demoCode}
-                              </span>
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleAutoFillDemo}
-                            className="text-[11px] font-black bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          >
-                            {t.login.autoFill}
-                          </button>
-                        </div>
-                      )}
+                      {/* Real Carrier SMS Notification Banner */}
+                      <div className="p-3 bg-emerald-50/90 border border-emerald-300/80 rounded-2xl flex items-center gap-2.5 shadow-xs">
+                        <Smartphone className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span className="text-xs text-emerald-950 font-bold">
+                          {language === 'hi'
+                            ? `आपके संदेश इनबॉक्स में +91 ${phoneInput} पर 6-अंकीय ओटीपी भेजा गया है।`
+                            : `6-digit verification code sent via SMS to +91 ${phoneInput}.`}
+                        </span>
+                      </div>
 
                       {/* 6 Digit Inputs */}
                       <div>

@@ -16,7 +16,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     return (
       <main id="main-content" className="flex-1 focus:outline-none" tabIndex={-1}>
         {children}
-        <AskAryaChatbot />
       </main>
     );
   }

@@ -48,15 +48,19 @@ export function MobileNav() {
           return (
             <button
               key="ask-arya-nav"
-              onClick={() => {
-                const trigger = document.getElementById("ask-arya-chat-trigger");
-                if (trigger) {
-                  trigger.click();
-                } else {
-                  window.dispatchEvent(new CustomEvent("open-ask-arya"));
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                if (typeof window !== 'undefined') {
+                  if (typeof (window as any).openAskArya === 'function') {
+                    (window as any).openAskArya();
+                  }
+                  window.dispatchEvent(new CustomEvent('open-ask-arya'));
                 }
+                const trigger = document.getElementById('ask-arya-chat-trigger');
+                if (trigger) trigger.click();
               }}
-              className="flex flex-col items-center justify-center py-1 px-0.5 rounded-lg touch-target transition-colors"
+              className="flex flex-col items-center justify-center py-1 px-0.5 rounded-lg touch-target transition-colors cursor-pointer"
             >
               <div className="w-10 h-10 rounded-full overflow-hidden shadow-md border-2 border-emerald-500 -mt-3 bg-white relative">
                 <Image

@@ -156,4 +156,95 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(t3.reply).toContain('here are your best matching schemes below');
     expect(t3.matched_schemes.length).toBeGreaterThan(0);
   });
+
+  it('17. Strictly follows reply pattern: responds directly to user input first, then asks basic details required for scheme recommendation', async () => {
+    // Turn 1: User specifies a venture
+    const t1 = await processChatTurn(sessionId, 'I want to start a grocery shop');
+    expect(t1.reply).toContain('Your vision for retail grocery / kirana shop is very well aligned');
+    expect(t1.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(t1.reply).toContain('approximately how much total loan or funding do you need?');
+
+    // Turn 2: User provides amount
+    const t2 = await processChatTurn(sessionId, '1 lakh');
+    // First part must kindly acknowledge amount with micro finance & subsidy context
+    expect(t2.reply).toContain('Noted your funding requirement of ₹1,00,000:');
+    expect(t2.reply).toContain('Micro Finance Scheme');
+    expect(t2.reply).toContain('100% collateral-free');
+    // Second part must ask basic details required
+    expect(t2.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(t2.reply).toContain('Scheduled Caste (SC) community?');
+
+    // Turn 3: User provides SC status
+    const t3 = await processChatTurn(sessionId, 'Yes, SC');
+    expect(t3.reply).toContain('Acknowledged (Scheduled Caste Category):');
+    expect(t3.reply).toContain('statutory interest rates as low as 4% to 5% p.a.');
+    expect(t3.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(t3.reply).toContain('woman entrepreneur');
+
+    // Turn 4: User provides Gender
+    const t4 = await processChatTurn(sessionId, 'Female');
+    expect(t4.reply).toContain('Understood (Woman Entrepreneur):');
+    expect(t4.reply).toContain('Mahila Samriddhi Yojana (MSY)');
+    expect(t4.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(t4.reply).toContain('annual family income');
+  });
+
+  it('18. Answers user question first, then proceeds with basic details inquiry', async () => {
+    const res = await processChatTurn(sessionId, 'How to apply for schemes?');
+    expect(res.reply).toContain('Regarding How to Apply:');
+    expect(res.reply).toContain('State Channelizing Agency (SCA)');
+    expect(res.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(res.reply).toContain('what type of business, venture, or educational scheme are you looking to start?');
+  });
+
+  it('19. Accurately handles saree business and personal introduction without Dairy bleed-through', async () => {
+    // Session previously had other slots
+    await processChatTurn(sessionId, 'dairy business');
+    await processChatTurn(sessionId, '50000');
+
+    // User introduces herself with saree business
+    const res = await processChatTurn(sessionId, 'hi my name is sneha i want to open a small scale business of saree');
+    expect(res.reply).toContain('Sneha');
+    expect(res.reply).toContain('saree & apparel business');
+    expect(res.reply).not.toContain('Dairy');
+    expect(res.reply).toContain('Basic Details Required for Scheme Recommendation:');
+    expect(res.reply).toContain('approximately how much total loan or funding do you need?');
+    expect(res.matched_schemes.length).toBe(0); // Schemes must NOT be shown prematurely before details are filled!
+  });
+
+  it('20. Introducing name only does NOT bleed past trade into greeting', async () => {
+    const testSid = 'sid_name_only_' + Date.now();
+    // Prior user session had saree business
+    await processChatTurn(testSid, 'saree business');
+
+    // Fresh user introduces himself as Aditya without mentioning trade
+    const res = await processChatTurn(testSid, 'My name is Aditya');
+    expect(res.reply).toContain('Namaste Aditya ji!');
+    expect(res.reply).not.toContain('saree');
+    expect(res.reply).not.toContain('Sneha');
+    expect(res.slots.user_name).toBe('Aditya');
+    expect(res.slots.gender).toBe('MALE');
+  });
+
+  it('21. Pure greeting wipes any prior user name or trade context', async () => {
+    const testSid = 'sid_pure_greeting_' + Date.now();
+    await processChatTurn(testSid, 'My name is Sneha, I want a saree shop');
+
+    // User or client opens fresh and sends 'hello'
+    const res = await processChatTurn(testSid, 'hello');
+    expect(res.reply).not.toContain('Sneha');
+    expect(res.reply).not.toContain('saree');
+    expect(res.reply).toContain('Namaste! I am Arya');
+    expect(res.slots.user_name).toBeNull();
+    expect(res.slots.purpose).toBeNull();
+  });
+
+  it('22. Supports compound names and greetings with I am / Im', async () => {
+    const testSid = 'sid_compound_' + Date.now();
+    const res = await processChatTurn(testSid, 'I am Aditya Singh, I want to start a grocery shop');
+    expect(res.reply).toContain('Namaste Aditya ji!');
+    expect(res.reply).toContain('retail grocery / kirana shop');
+    expect(res.slots.user_name).toBe('Aditya Singh');
+    expect(res.slots.gender).toBe('MALE');
+  });
 });

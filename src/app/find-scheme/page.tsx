@@ -63,6 +63,8 @@ import {
   Building,
   Home,
   Calendar,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 
 function FindSchemeContent() {
@@ -114,6 +116,66 @@ function FindSchemeContent() {
   // DIRECT LOOKUP STATE
   const [directSearchQuery, setDirectSearchQuery] = useState<string>('');
   const [selectedDirectCode, setSelectedDirectCode] = useState<string>('AMY');
+  const [isVoiceSearching, setIsVoiceSearching] = useState(false);
+  const voiceRecogRef = useRef<any>(null);
+
+  const toggleDirectVoiceSearch = () => {
+    if (isVoiceSearching) {
+      if (voiceRecogRef.current) {
+        try { voiceRecogRef.current.stop(); } catch (e) {}
+        voiceRecogRef.current = null;
+      }
+      setIsVoiceSearching(false);
+      return;
+    }
+
+    const SpeechRecog =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecog) {
+      alert(language === 'hi' ? 'आपके ब्राउज़र में वॉइस इनपुट समर्थित नहीं है।' : 'Voice input is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const recog = new SpeechRecog();
+      recog.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
+      recog.continuous = false;
+      recog.interimResults = true;
+
+      recog.onstart = () => {
+        setIsVoiceSearching(true);
+      };
+
+      recog.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setDirectSearchQuery(transcript);
+        }
+      };
+
+      recog.onerror = (e: any) => {
+        console.warn('Voice search status:', e?.error || e);
+        setIsVoiceSearching(false);
+      };
+
+      recog.onend = () => {
+        setIsVoiceSearching(false);
+        voiceRecogRef.current = null;
+      };
+
+      voiceRecogRef.current = recog;
+      recog.start();
+    } catch (err) {
+      console.warn('Failed to start voice search:', err);
+      setIsVoiceSearching(false);
+    }
+  };
 
   // Question container ref for scrolling to top of question on mobile/desktop step change
   const questionContainerRef = useRef<HTMLDivElement>(null);
@@ -2285,17 +2347,32 @@ function FindSchemeContent() {
                   value={directSearchQuery}
                   onChange={(e) => setDirectSearchQuery(e.target.value)}
                   placeholder={discUI.directSearchPlaceholder}
-                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600 text-sm font-medium text-slate-900 shadow-inner"
+                  className="w-full pl-11 pr-20 py-3.5 rounded-2xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600 text-sm font-medium text-slate-900 shadow-inner"
                 />
-                {directSearchQuery && (
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {directSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setDirectSearchQuery('')}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 px-1.5 py-0.5 rounded"
+                    >
+                      Clear
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setDirectSearchQuery('')}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 px-1.5 py-0.5 rounded"
+                    onClick={toggleDirectVoiceSearch}
+                    id="direct-voice-search-btn"
+                    title={isVoiceSearching ? 'Stop speaking' : 'Click to speak scheme name'}
+                    className={`p-2 rounded-xl transition-all ${
+                      isVoiceSearching
+                        ? 'bg-red-600 text-white animate-pulse shadow-md'
+                        : 'bg-slate-100 hover:bg-emerald-600 text-slate-600 hover:text-white'
+                    }`}
                   >
-                    Clear
+                    {isVoiceSearching ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
-                )}
+                </div>
               </div>
             </div>
 

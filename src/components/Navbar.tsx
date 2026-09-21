@@ -121,12 +121,19 @@ export function Navbar() {
             </Link>
 
             <button
+              type="button"
               onClick={() => {
+                if (typeof window !== 'undefined') {
+                  if (typeof (window as any).openAskArya === 'function') {
+                    (window as any).openAskArya();
+                  }
+                  window.dispatchEvent(new CustomEvent('open-ask-arya'));
+                }
                 const trigger = document.getElementById('ask-arya-chat-trigger');
                 if (trigger) trigger.click();
               }}
-              className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition"
-              title="Ask Arya — NSFDC Offline Scheme Recommender"
+              className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer"
+              title="Ask Arya — NSFDC Scheme Recommender"
             >
               <Bot className="w-3.5 h-3.5" />
               <span>Ask Arya</span>

@@ -16,22 +16,27 @@ export function LanguageDropdown({ className = '' }: LanguageDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Close when clicking outside
+  // Close when clicking outside (attached on next tick to avoid bubbling race condition)
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    if (!isOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearch('');
       }
     }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      // Auto-focus search input if opened
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      inputRef.current?.focus();
+    }, 20);
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isOpen]);
 
@@ -68,12 +73,16 @@ export function LanguageDropdown({ className = '' }: LanguageDropdownProps) {
     <div ref={dropdownRef} className={`relative inline-block text-left ${className}`}>
       {/* Trigger Button beside Login */}
       <button
+        id="language-dropdown-trigger"
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label="Select Language"
-        className={`touch-target flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all shadow-2xs ${
+        className={`touch-target flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all shadow-2xs cursor-pointer ${
           className.includes('w-full') ? 'w-full justify-between' : ''
         } ${
           isOpen
@@ -98,7 +107,8 @@ export function LanguageDropdown({ className = '' }: LanguageDropdownProps) {
           {/* Mobile Backdrop */}
           <div
             className="fixed inset-0 bg-slate-950/40 backdrop-blur-2xs z-40 sm:hidden"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setIsOpen(false);
               setSearch('');
             }}
@@ -109,6 +119,7 @@ export function LanguageDropdown({ className = '' }: LanguageDropdownProps) {
             role="menu"
             aria-orientation="vertical"
             className="fixed left-1/2 -translate-x-1/2 top-16 z-50 w-[calc(100vw-32px)] max-w-sm sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:mt-1.5 sm:w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Search Header */}
             <div className="p-2.5 border-b border-slate-100 bg-slate-50/90">
@@ -138,8 +149,11 @@ export function LanguageDropdown({ className = '' }: LanguageDropdownProps) {
                     key={lang.code}
                     type="button"
                     role="menuitem"
-                    onClick={() => handleSelect(lang.code)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(lang.code);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-emerald-50 font-black text-emerald-950 ring-1 ring-emerald-500/30'
                         : 'hover:bg-slate-100/80 text-slate-800 font-semibold'

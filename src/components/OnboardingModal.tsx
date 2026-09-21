@@ -251,8 +251,8 @@ export function OnboardingModal() {
             </span>
           </div>
 
-          {/* Submit Action */}
-          <div className="pt-2">
+          {/* Submit Action & Skip Option */}
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               disabled={isSubmitting}
@@ -268,6 +268,21 @@ export function OnboardingModal() {
                   </span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await completeUserProfile({
+                  name: user?.name || 'Citizen User',
+                  gender: 'MALE',
+                  state: 'Uttar Pradesh',
+                  district: 'Lucknow',
+                });
+              }}
+              className="w-full py-2 text-center text-xs text-slate-500 hover:text-slate-800 font-bold transition-colors cursor-pointer"
+            >
+              {language === 'hi' ? 'अभी छोड़ें (Skip for now)' : 'Skip for now'}
             </button>
           </div>
         </form>

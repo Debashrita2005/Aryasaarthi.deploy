@@ -39,9 +39,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `सत्यापन कोड +91 ${masked} पर भेज दिया गया है (OTP sent).`,
+        message: `सत्यापन कोड +91 ${masked} पर एसएमएस द्वारा भेज दिया गया है (OTP sent).`,
         phone: nationalPhone,
-        demoOtp: generatedOtp, // Included for frictionless evaluation / demo mode
         expiresInSeconds: 300,
       });
     }

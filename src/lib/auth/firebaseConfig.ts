@@ -14,12 +14,12 @@ import {
 } from 'firebase/auth';
 
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAQzqortg_oY7CYKP93Li4IzXv7UuzZ_aI',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'aaryasarthi-f0ba4.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'aaryasarthi-f0ba4',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'aaryasarthi-f0ba4.firebasestorage.app',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '850338555675',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:850338555675:web:d2aa555890b30097cb95be',
 };
 
 /**
@@ -39,16 +39,24 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
 
-if (typeof window !== 'undefined' && isFirebaseConfigured()) {
-  try {
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    auth.useDeviceLanguage(); // Automatically localizes SMS and prompts to Indian languages
-    googleProvider = new GoogleAuthProvider();
-    googleProvider.setCustomParameters({ prompt: 'select_account' });
-  } catch (err) {
-    console.warn('[Firebase Auth] Failed to initialize Firebase:', err);
+export function getFirebaseAuth(): Auth | null {
+  if (typeof window === 'undefined') return null;
+  if (!auth && isFirebaseConfigured()) {
+    try {
+      app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      auth.useDeviceLanguage();
+      googleProvider = new GoogleAuthProvider();
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
+    } catch (err) {
+      console.warn('[Firebase Auth] Failed to initialize Firebase:', err);
+    }
   }
+  return auth;
+}
+
+if (typeof window !== 'undefined') {
+  getFirebaseAuth();
 }
 
 export { app, auth, googleProvider };
@@ -57,17 +65,28 @@ export { app, auth, googleProvider };
  * Initialize invisible reCAPTCHA on a DOM container (Required for Free Firebase Phone Auth)
  */
 export function setupRecaptcha(containerId: string = 'recaptcha-container'): RecaptchaVerifier | null {
-  if (typeof window === 'undefined' || !auth) return null;
+  if (typeof window === 'undefined') return null;
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) return null;
 
   try {
-    // Clear existing reCAPTCHA instance if already rendered on container
     const existingElement = document.getElementById(containerId);
     if (!existingElement) {
       console.warn(`[reCAPTCHA] Container #${containerId} not found in DOM.`);
       return null;
     }
 
-    const verifier = new RecaptchaVerifier(auth, containerId, {
+    // Safely clear any previous reCAPTCHA instance to prevent duplicate widget errors
+    if ((window as any)._aryaRecaptchaVerifier) {
+      try {
+        (window as any)._aryaRecaptchaVerifier.clear();
+      } catch (e) {
+        // ignore
+      }
+      (window as any)._aryaRecaptchaVerifier = null;
+    }
+
+    const verifier = new RecaptchaVerifier(currentAuth, containerId, {
       size: 'invisible',
       callback: () => {
         // reCAPTCHA solved - allow phone verification
@@ -77,6 +96,7 @@ export function setupRecaptcha(containerId: string = 'recaptcha-container'): Rec
       },
     });
 
+    (window as any)._aryaRecaptchaVerifier = verifier;
     return verifier;
   } catch (err) {
     console.warn('[Firebase Auth] Error setting up RecaptchaVerifier:', err);
@@ -91,7 +111,8 @@ export async function sendFirebasePhoneOtp(
   phoneNumber: string,
   verifier: RecaptchaVerifier
 ): Promise<ConfirmationResult> {
-  if (!auth) {
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) {
     throw new Error('Firebase Auth is not initialized. Check your environment variables.');
   }
 
@@ -105,15 +126,20 @@ export async function sendFirebasePhoneOtp(
     }
   }
 
-  return await signInWithPhoneNumber(auth, e164, verifier);
+  return await signInWithPhoneNumber(currentAuth, e164, verifier);
 }
 
 /**
  * 100% Free Google Sign-In via Firebase / Google Identity
  */
 export async function signInWithGooglePopup(): Promise<UserCredential> {
-  if (!auth || !googleProvider) {
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) {
     throw new Error('Firebase Auth is not initialized. Check your environment variables.');
   }
-  return await signInWithPopup(auth, googleProvider);
+  if (!googleProvider) {
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({ prompt: 'select_account' });
+  }
+  return await signInWithPopup(currentAuth, googleProvider);
 }
