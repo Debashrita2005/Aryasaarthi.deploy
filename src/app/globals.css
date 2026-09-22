@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+@import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
 @tailwind components;
@@ -80,8 +81,6 @@ textarea:focus-visible {
 }
 
 /* Leaflet GIS Map Styling */
-@import 'leaflet/dist/leaflet.css';
-
 .leaflet-container {
   font-family: inherit;
   width: 100%;
