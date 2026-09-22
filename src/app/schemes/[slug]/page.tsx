@@ -78,18 +78,7 @@ export default function SchemeDetailPage() {
       
       let uid = user?.id;
       if (!uid) {
-        try {
-          const logged = await loginWithGoogle({
-            name: applicantName || 'Beneficiary Citizen',
-            phone: applicantPhone || '+91 98765 43210',
-            state: applicantState || 'Uttar Pradesh',
-            district: applicantDistrict || 'Lucknow',
-            role: 'beneficiary',
-          });
-          uid = logged.id;
-        } catch {
-          uid = `citizen_${Date.now()}`;
-        }
+        uid = applicantPhone ? `citizen_${applicantPhone.replace(/\D/g, '')}` : `citizen_${Date.now()}`;
       }
 
       const res = await fetch('/api/user/inquiries', {

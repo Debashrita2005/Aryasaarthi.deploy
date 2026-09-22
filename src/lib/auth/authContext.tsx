@@ -111,68 +111,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Helper timeout promise
-  const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms)),
-    ]);
-  };
-
-  // Google Sign-in handler (Live Firebase Google OAuth if keys provided)
+  // Google Sign-in handler (Live Firebase Google OAuth)
   const loginWithGoogle = async (customProfile?: Partial<AuthUser>): Promise<AuthUser> => {
     setIsLoading(true);
     try {
-      if (isFirebaseConfigured()) {
-        const cred = await signInWithGooglePopup();
-        const fbUser = cred.user;
-        const googleUser: AuthUser = {
-          id: fbUser.uid || `google_${Date.now()}`,
-          name: fbUser.displayName || customProfile?.name || 'Google Citizen User',
-          email: fbUser.email || customProfile?.email || 'citizen@gmail.com',
-          phone: fbUser.phoneNumber || customProfile?.phone || '+91 98765 43210',
-          avatar: fbUser.photoURL || customProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-          authMethod: 'google',
-          role: 'beneficiary',
-          state: customProfile?.state || 'Uttar Pradesh',
-          district: customProfile?.district || 'Lucknow',
-          verified: true,
-          profileCompleted: true,
-          createdAt: new Date().toISOString(),
-          ...customProfile,
-        };
-        persistUser(googleUser);
-        upsertUserInDb(googleUser);
-        setIsLoading(false);
-        return googleUser;
+      if (!isFirebaseConfigured()) {
+        throw new Error('Firebase Auth is not configured. Please set NEXT_PUBLIC_FIREBASE_* environment variables.');
       }
+      const cred = await signInWithGooglePopup();
+      const fbUser = cred.user;
+      const googleUser: AuthUser = {
+        id: fbUser.uid || `google_${Date.now()}`,
+        name: fbUser.displayName || customProfile?.name || 'Google Citizen User',
+        email: fbUser.email || customProfile?.email || undefined,
+        phone: fbUser.phoneNumber || customProfile?.phone || undefined,
+        avatar: fbUser.photoURL || customProfile?.avatar || undefined,
+        authMethod: 'google',
+        role: customProfile?.role || 'beneficiary',
+        state: customProfile?.state || 'Uttar Pradesh',
+        district: customProfile?.district || 'Lucknow',
+        verified: true,
+        profileCompleted: true,
+        createdAt: new Date().toISOString(),
+        ...customProfile,
+      };
+      persistUser(googleUser);
+      upsertUserInDb(googleUser);
+      setIsLoading(false);
+      return googleUser;
     } catch (err: any) {
-      console.warn('[Google Auth] Live popup note:', err?.message);
+      setIsLoading(false);
+      console.error('[Google Auth Error]:', err);
+      const errorMsg = err?.code ? `Firebase Auth (${err.code}): ${err.message}` : (err?.message || 'Google Sign-in failed');
+      throw new Error(errorMsg);
     }
-
-    // Default guaranteed fallback
-    await new Promise((res) => setTimeout(res, 200));
-    const simulatedUser: AuthUser = {
-      id: `google_${Date.now()}`,
-      name: customProfile?.name || 'Aditya Singh',
-      email: customProfile?.email || 'aditya.singh.nsfdc@gmail.com',
-      phone: customProfile?.phone || '+91 98765 43210',
-      avatar: customProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-      authMethod: 'google',
-      role: 'beneficiary',
-      state: 'Uttar Pradesh',
-      district: 'Lucknow',
-      gender: 'MALE',
-      verified: true,
-      profileCompleted: true,
-      createdAt: new Date().toISOString(),
-      ...customProfile,
-    };
-
-    persistUser(simulatedUser);
-    upsertUserInDb(simulatedUser);
-    setIsLoading(false);
-    return simulatedUser;
   };
 
   // Send Mobile OTP (Dispatches Real Carrier SMS to phone via Firebase Phone Auth)
@@ -189,52 +161,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // 1. Live Firebase Phone Auth (Sends real carrier SMS to the Indian mobile number)
-    if (isFirebaseConfigured()) {
-      try {
-        const verifier = setupRecaptcha('recaptcha-container');
-        if (verifier) {
-          const confirmation = await sendFirebasePhoneOtp(`+91${nationalNumber}`, verifier);
-          setConfirmationResult(confirmation);
-          return {
-            success: true,
-            message: `आधिकारिक ओटीपी एसएमएस आपके मोबाइल नंबर +91 ${nationalNumber} पर भेज दिया गया है। कृपया अपना एसएमएस संदेश देखें।`,
-          };
-        }
-      } catch (fbErr: any) {
-        console.error('[Firebase Phone Auth] Real SMS dispatch error:', fbErr);
-        // If Firebase threw a quota or billing/domain error, report it
-        if (fbErr?.code === 'auth/invalid-app-credential' || fbErr?.code === 'auth/captcha-check-failed' || fbErr?.code === 'auth/billing-not-enabled') {
-          return {
-            success: false,
-            message: `Firebase SMS Error (${fbErr?.code}): ${fbErr.message || 'Check Firebase authorized domains'}.`,
-          };
-        }
-      }
+    if (!isFirebaseConfigured()) {
+      return {
+        success: false,
+        message: 'Firebase Auth is not configured. Please set NEXT_PUBLIC_FIREBASE_* environment variables.',
+      };
     }
 
-    // 2. Server API fallback if Firebase SMS is temporarily not responding
     try {
-      const res = await fetch('/api/auth/otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', phone: nationalNumber }),
-      });
-      const serverOtpData = await res.json();
-      if (serverOtpData && serverOtpData.success) {
+      const verifier = setupRecaptcha('recaptcha-container');
+      if (!verifier) {
         return {
-          success: true,
-          message: `ओटीपी आपके मोबाइल नंबर +91 ${nationalNumber} पर भेज दिया गया है।`,
+          success: false,
+          message: 'Failed to initialize reCAPTCHA verifier. Please refresh the page and try again.',
         };
       }
-    } catch (err) {
-      console.warn('[OTP Server] Fetch error:', err);
+      const confirmation = await sendFirebasePhoneOtp(`+91${nationalNumber}`, verifier);
+      setConfirmationResult(confirmation);
+      return {
+        success: true,
+        message: `ओटीपी एसएमएस मोबाइल नंबर +91 ${nationalNumber} पर भेज दिया गया है। (OTP sent via SMS).`,
+      };
+    } catch (fbErr: any) {
+      console.error('[Firebase Phone Auth Error]:', fbErr);
+      const code = fbErr?.code || 'auth/sms-failed';
+      const msg = fbErr?.message || 'Failed to dispatch SMS';
+      return {
+        success: false,
+        message: `Firebase SMS Error (${code}): ${msg}`,
+      };
     }
-
-    return {
-      success: true,
-      message: `ओटीपी आपके मोबाइल नंबर +91 ${nationalNumber} पर भेजा गया।`,
-    };
   };
 
   // Verify Mobile OTP
@@ -252,77 +208,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // 1. Live Firebase Phone Auth Verification
-    if (confirmationResult) {
-      try {
-        const cred = await confirmationResult.confirm(code);
-        const fbUser = cred.user;
-        const citizenUser: AuthUser = {
-          id: fbUser.uid || `fb_phone_${Date.now()}`,
-          name: `नागरिक (Citizen) +91 ${nationalNumber.slice(0, 5)}...`,
-          phone: fbUser.phoneNumber || `+91 ${nationalNumber}`,
-          authMethod: 'otp',
-          role: 'beneficiary',
-          verified: true,
-          createdAt: new Date().toISOString(),
-        };
-        persistUser(citizenUser);
-        upsertUserInDb(citizenUser);
-        setConfirmationResult(null);
-        return { success: true, user: citizenUser };
-      } catch (fbErr: any) {
-        console.warn('[Firebase Phone Auth] Firebase confirmation failed, checking server API:', fbErr?.message);
-      }
+    if (!confirmationResult) {
+      return {
+        success: false,
+        error: 'No active OTP verification session found. Please request a new OTP.',
+      };
     }
 
-    // 2. Server API Verification
     try {
-      const res = await fetch('/api/auth/otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', phone: nationalNumber, otp: code }),
-      });
-      const data = await res.json();
-
-      if (data.success && data.user) {
-        persistUser(data.user);
-        upsertUserInDb(data.user);
-        setConfirmationResult(null);
-        return { success: true, user: data.user };
-      }
-    } catch (err) {
-      console.warn('[Server OTP] Verification call error:', err);
-    }
-
-    // 3. Session storage / Master dev code verification
-    const storedOtp = typeof window !== 'undefined' ? window.sessionStorage.getItem(`sahayak_otp_${nationalNumber}`) : null;
-    if (code === storedOtp || code === '123456') {
-      const fallbackUser: AuthUser = {
-        id: `beneficiary_${nationalNumber}`,
-        name: `नागरिक (Citizen) •••${nationalNumber.slice(-4)}`,
-        phone: `+91 ${nationalNumber}`,
+      const cred = await confirmationResult.confirm(code);
+      const fbUser = cred.user;
+      const citizenUser: AuthUser = {
+        id: fbUser.uid || `fb_phone_${Date.now()}`,
+        name: `नागरिक (Citizen) +91 ${nationalNumber.slice(0, 5)}...`,
+        phone: fbUser.phoneNumber || `+91 ${nationalNumber}`,
         authMethod: 'otp',
         role: 'beneficiary',
         verified: true,
-        state: 'उत्तर प्रदेश (Uttar Pradesh)',
-        district: 'लखनऊ (Lucknow)',
         createdAt: new Date().toISOString(),
       };
-      persistUser(fallbackUser);
-      upsertUserInDb(fallbackUser);
+      persistUser(citizenUser);
+      upsertUserInDb(citizenUser);
       setConfirmationResult(null);
-      return { success: true, user: fallbackUser };
+      return { success: true, user: citizenUser };
+    } catch (fbErr: any) {
+      console.error('[Firebase Phone Auth Verification Error]:', fbErr);
+      const codeName = fbErr?.code || 'auth/invalid-verification-code';
+      const detailMsg = fbErr?.message || 'Invalid or expired verification code';
+      return {
+        success: false,
+        error: `Firebase Auth (${codeName}): ${detailMsg}`,
+      };
     }
-
-    return {
-      success: false,
-      error: 'अमान्य अथवा समाप्त हो चुका ओटीपी कोड (Invalid or expired OTP code).',
-    };
   };
 
   // Logout
   const logout = () => {
     persistUser(null);
+    setConfirmationResult(null);
   };
 
   // Profile update

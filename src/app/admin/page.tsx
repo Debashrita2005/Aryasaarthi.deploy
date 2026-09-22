@@ -82,8 +82,6 @@ export default function AdminPage() {
       setAdminAuthError(null);
       if (user) {
         updateUserProfile({ role: 'admin' });
-      } else {
-        loginWithGoogle({ name: 'Chief Scheme Governance Officer', role: 'admin' });
       }
     } else {
       setAdminAuthError('Invalid Admin Passcode. Use NSFDC@2026 or admin123 for authorized access.');
@@ -95,8 +93,6 @@ export default function AdminPage() {
     setAdminAuthError(null);
     if (user) {
       updateUserProfile({ role: 'admin' });
-    } else {
-      loginWithGoogle({ name: 'Chief Scheme Governance Officer', role: 'admin' });
     }
   };
 

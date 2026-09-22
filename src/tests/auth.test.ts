@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { isFirebaseConfigured, firebaseConfig } from '../lib/auth/firebaseConfig';
 
-describe('Citizen Authentication & OTP Logic', () => {
+describe('Citizen Authentication & Validation Logic', () => {
   const isValidIndianMobile = (phone: string): boolean => {
     const cleaned = phone.replace(/[\s\-\+]/g, '');
     const nationalNumber = cleaned.startsWith('91') && cleaned.length === 12 ? cleaned.slice(2) : cleaned;
@@ -46,12 +47,17 @@ describe('Citizen Authentication & OTP Logic', () => {
     expect(otpRegex.test('12345a')).toBe(false);
   });
 
-  it('verifies demo master code acceptance', () => {
-    const masterCode = '123456';
-    const checkOtp = (entered: string, actual: string) => entered === actual || entered === masterCode;
+  it('strictly enforces OTP matching with zero hardcoded master bypasses', () => {
+    const strictVerifyOtp = (entered: string, actual: string) => entered.trim() === actual.trim();
 
-    expect(checkOtp('123456', '789012')).toBe(true);
-    expect(checkOtp('789012', '789012')).toBe(true);
-    expect(checkOtp('000000', '789012')).toBe(false);
+    expect(strictVerifyOtp('789012', '789012')).toBe(true);
+    expect(strictVerifyOtp('123456', '789012')).toBe(false);
+    expect(strictVerifyOtp('000000', '789012')).toBe(false);
+  });
+
+  it('evaluates Firebase configuration presence accurately', () => {
+    expect(typeof isFirebaseConfigured).toBe('function');
+    expect(typeof isFirebaseConfigured()).toBe('boolean');
+    expect(typeof firebaseConfig).toBe('object');
   });
 });

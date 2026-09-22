@@ -21,7 +21,7 @@ describe('Google Maps Loader & Key Management', () => {
   });
 
   it('stores and retrieves custom API key from localStorage', () => {
-    const testKey = 'AIzaSyTestApiKeyForNSFDCPlatform2026';
+    const testKey = 'test-mock-gmaps-key-nsfdc-2026';
     setStoredGoogleMapsApiKey(testKey);
 
     expect(getGoogleMapsApiKey()).toBe(testKey);

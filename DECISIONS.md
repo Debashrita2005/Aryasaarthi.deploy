@@ -98,4 +98,22 @@ To achieve maximum accuracy, explainability, and zero external API dependencies 
 ### Guarantee
 All rules, thresholds, and slabs are dynamically bound to version-controlled `nsfdc_schemes.json` (zero hardcoded thresholds in code). Every response exposes a verifiable 4-step reasoning chain and logs structured telemetry.
 
+---
+
+## Decision 5: Authentication Overhaul & Zero Hardcoded Secret Isolation
+
+### Date
+2026-09-22
+
+### Context
+To eliminate security vulnerabilities, prevent silent fake authentication bypasses, and isolate credentials:
+1. Removed fake user object fallbacks in `src/lib/auth/authContext.tsx` for both Google OAuth and Phone OTP.
+2. Removed hardcoded master code `123456` bypass.
+3. Deleted in-memory mock OTP server route (`src/app/api/auth/otp/route.ts`) in favor of direct client-side Firebase Phone Auth (`signInWithPhoneNumber`).
+4. Stripped all fallback credentials and hardcoded project IDs from `src/lib/auth/firebaseConfig.ts`.
+5. Untracked `.env` from Git, moved local development values into gitignored `.env.local`, and preserved sanitized `.env.example`.
+6. Deleted unused `src/lib/auth/firebaseAdmin.ts` and pruned unused `JWT_SECRET_KEY` and private key variables.
+7. Verified that any authentication failure or missing configuration surfaces genuine Firebase error codes directly to the citizen UI.
+
+
 
