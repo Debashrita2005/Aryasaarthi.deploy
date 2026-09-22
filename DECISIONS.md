@@ -132,7 +132,25 @@ To eliminate security vulnerabilities, prevent silent fake authentication bypass
 1. **Elimination of Name-Based Gender Guessing:** Gender is never inferred from names; it is only captured via explicit user statements (e.g. "I am a woman", "mahila") or when answering the direct `GENDER` inquiry step.
 2. **Baseline Verification Guard (`hasFullBaseline`):** Loan amounts, scheme names (MSY, Micro Finance, TLS), and statutory interest rates (4%, 5%) are strictly prevented from premature disclosure during early greeting/introduction turns until `(slots.project_type || slots.purpose) && slots.gender && slots.sc_status` are collected.
 3. **Bhashini Voice Architecture:** Audio is captured natively via `MediaRecorder` and routed to `POST /api/bhashini/asr` as primary with browser `SpeechRecognition` as a graceful fallback. Text-to-speech leverages `bhashiniTTS` (`POST /api/bhashini/tts`) with browser `speechSynthesis` fallback. All permission denials and timeouts render visible alert banners within 2 seconds.
-4. **Multi-Modal Document Intake:** Added a file upload endpoint (`POST /api/chatbot/upload`) accepting images and PDFs (up to 10MB) with preview chips, cancellation buttons, and automated session attachment forwarding to `processChatTurn()`.
+---
+
+## Decision 7: Voice 16kHz PCM WAV Resampling, Live Waveform Meter, and Hindi/English Document OCR via Tesseract.js & Sharp
+
+### Date
+2026-09-22
+
+### Context
+1. **Audio Format Mismatch:** Bhashini ASR pipelines require 16kHz Mono 16-bit PCM WAV audio. Browsers typically record in WebM/Opus at varying sample rates, causing transcription degradation.
+2. **Mic Feedback Transparency:** Citizens lacked real-time visual feedback confirming whether sound was reaching the microphone while speaking.
+3. **Document Text Extraction:** Document uploads were only stored as static files without automated text extraction, making it impossible to auto-populate application slots from uploaded caste/income certificates.
+
+### Decisions
+1. **16kHz Mono WAV Audio Converter:** Implemented `convertBlobTo16kHzWav()` (`src/lib/audioConverter.ts`) using Web Audio API `OfflineAudioContext` to resample and encode audio into clean 16-bit PCM WAV with 44-byte headers before uploading to `/api/bhashini/asr`.
+2. **Live Sound Level Waveform:** Connected `AnalyserNode` to the input `MediaStream` to drive a live 5-bar volume level animation next to a 60-second countdown timer.
+3. **Resilient ASR Pipeline:** Added explicit audio capture constraints (`noiseSuppression`, `echoCancellation`, `autoGainControl`) and automated 1-time network retry before falling back to browser SpeechRecognition.
+4. **On-Device Hindi + English Document OCR:** Integrated `sharp` (grayscale, contrast normalization, sharpening) and `tesseract.js` (`hin+eng`) into `POST /api/chatbot/upload` to extract Devanagari and Latin script from document photos.
+5. **Contextual Document Slot Extraction & Graceful Fallbacks:** `processChatTurn()` parses OCR text into `slots` (SC status, income, name) and prompts the user gracefully if the photo is blurry or unreadable.
+
 
 
 

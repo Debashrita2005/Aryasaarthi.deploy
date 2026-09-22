@@ -38,6 +38,7 @@ import {
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/context";
 import { getBhashiniConfig } from "@/lib/bhashini";
+import { convertBlobTo16kHzWav } from "@/lib/audioConverter";
 
 interface SchemeMatch {
   scheme_id: string;
@@ -60,6 +61,9 @@ interface ChatAttachment {
   url: string;
   size: number;
   type: string;
+  extractedText?: string;
+  ocrConfidence?: number;
+  isLowConfidence?: boolean;
 }
 
 interface ChatMessage {
@@ -102,6 +106,7 @@ export function AskAryaChatbot() {
   // Bhashini Voice Recording & TTS States
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioLevel, setAudioLevel] = useState<number>(0);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -113,6 +118,9 @@ export function AskAryaChatbot() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Format seconds to mm:ss for voice recording timer
   const formatSeconds = (sec: number) => {
@@ -130,13 +138,21 @@ export function AskAryaChatbot() {
     setUploadError(null);
     setVoiceStatus(null);
 
-    // 1. Request microphone permission immediately
+    // 1. Request microphone permission with noise suppression, echo cancellation & 16kHz capture
     let stream: MediaStream | null = null;
     try {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
         throw new Error("Microphone API not supported in this browser.");
       }
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
     } catch (err: any) {
       console.warn("Microphone access error:", err);
       setVoiceError("Microphone access was denied. Please allow microphone permission or type your message.");
@@ -146,14 +162,46 @@ export function AskAryaChatbot() {
 
     setIsRecording(true);
     setRecordingSeconds(0);
+    setAudioLevel(0);
     transcriptAccumulatorRef.current = "";
     audioChunksRef.current = [];
 
-    // Live timer with auto-stop after 30 seconds
+    // Setup live audio visualizer via Web Audio API AnalyserNode
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const audioCtx = new AudioContextClass();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        audioContextRef.current = audioCtx;
+        analyserRef.current = analyser;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const updateVolume = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const normalized = Math.min(100, Math.round((avg / 128) * 100));
+          setAudioLevel(normalized);
+          animationFrameRef.current = requestAnimationFrame(updateVolume);
+        };
+        animationFrameRef.current = requestAnimationFrame(updateVolume);
+      }
+    } catch (e) {
+      console.warn("Audio visualizer init error:", e);
+    }
+
+    // Live timer with 60-second limit and visible countdown
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => {
-        if (prev >= 30) {
+        if (prev >= 60) {
           stopRecording(false);
           return 0;
         }
@@ -217,6 +265,16 @@ export function AskAryaChatbot() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    setAudioLevel(0);
     setRecordingSeconds(0);
     setIsRecording(false);
 
@@ -243,17 +301,34 @@ export function AskAryaChatbot() {
       return;
     }
 
-    // Process audio via Bhashini ASR as primary path
-    setVoiceStatus("Transcribing speech...");
+    // Process audio via Bhashini ASR as primary path (resampled to 16kHz mono WAV)
+    setVoiceStatus("Transcribing speech via Bhashini...");
     setTimeout(async () => {
       if (audioChunksRef.current.length > 0) {
         try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-            const base64Audio = (reader.result as string)?.split(",")[1];
-            if (base64Audio) {
+          const rawBlob = new Blob(audioChunksRef.current, {
+            type: recordedRecorder?.mimeType || "audio/webm",
+          });
+
+          let base64Audio = "";
+          try {
+            const converted = await convertBlobTo16kHzWav(rawBlob);
+            base64Audio = converted.base64;
+          } catch (convErr) {
+            console.warn("WAV conversion error, falling back to raw base64:", convErr);
+            const arrayBuffer = await rawBlob.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = "";
+            for (let i = 0; i < bytes.byteLength; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            base64Audio = btoa(binary);
+          }
+
+          if (base64Audio) {
+            let data: any = null;
+            let retryCount = 0;
+            while (retryCount < 2 && !data) {
               try {
                 const res = await fetch("/api/bhashini/asr", {
                   method: "POST",
@@ -263,31 +338,38 @@ export function AskAryaChatbot() {
                     language: bhashiniConfig.bhashiniCode,
                   }),
                 });
-                const data = await res.json();
-                if (data && data.success && data.text && data.text.trim()) {
-                  setVoiceStatus(null);
-                  sendMessage(data.text.trim());
-                  transcriptAccumulatorRef.current = "";
-                  setInput("");
-                  return;
+                if (res.ok) {
+                  data = await res.json();
+                } else {
+                  retryCount++;
+                  if (retryCount < 2) await new Promise((r) => setTimeout(r, 400));
                 }
               } catch (err) {
-                console.warn("Bhashini ASR fetch error:", err);
+                retryCount++;
+                if (retryCount < 2) await new Promise((r) => setTimeout(r, 400));
               }
             }
 
-            // Fallback to Web Speech API transcript if Bhashini returned empty or was unavailable
-            const fallbackText = (transcriptAccumulatorRef.current || input || "").trim();
-            if (fallbackText) {
+            if (data && data.success && data.text && data.text.trim()) {
               setVoiceStatus(null);
-              sendMessage(fallbackText);
+              sendMessage(data.text.trim());
               transcriptAccumulatorRef.current = "";
               setInput("");
-            } else {
-              setVoiceStatus(null);
-              setVoiceError("No speech detected. Please speak closer to your microphone or type your message.");
+              return;
             }
-          };
+          }
+
+          // Fallback to Web Speech API transcript if Bhashini returned empty or was unavailable
+          const fallbackText = (transcriptAccumulatorRef.current || input || "").trim();
+          if (fallbackText) {
+            setVoiceStatus(null);
+            sendMessage(fallbackText);
+            transcriptAccumulatorRef.current = "";
+            setInput("");
+          } else {
+            setVoiceStatus(null);
+            setVoiceError("No speech detected. Please speak closer to your microphone or type your message.");
+          }
           return;
         } catch (e) {
           console.warn("Audio blob processing error:", e);
@@ -1151,7 +1233,16 @@ export function AskAryaChatbot() {
                       ) : (
                         <FileText className="w-4 h-4 text-emerald-700" />
                       )}
-                      <span className="max-w-[120px] truncate">{att.name}</span>
+                      <span className="max-w-[110px] truncate">{att.name}</span>
+                      {att.isLowConfidence ? (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                          ⚠️ Low Clarity
+                        </span>
+                      ) : att.extractedText ? (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                          📄 OCR Text
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeAttachment(idx)}
@@ -1165,7 +1256,7 @@ export function AskAryaChatbot() {
                   {uploading && (
                     <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-bold px-2 py-1">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Uploading...</span>
+                      <span>Reading Document (OCR)...</span>
                     </div>
                   )}
                 </div>
@@ -1212,7 +1303,7 @@ export function AskAryaChatbot() {
               )}
 
               {isRecording ? (
-                /* Active Voice Recording Mode */
+                /* Active Voice Recording Mode with Live Waveform */
                 <div
                   id="ask-arya-recording-bar"
                   className="w-full flex items-center justify-between gap-2 bg-rose-50/95 border-2 border-rose-400 rounded-2xl px-3 py-2 text-rose-800 shadow-sm"
@@ -1223,11 +1314,26 @@ export function AskAryaChatbot() {
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
-                      <div className="text-xs font-black text-rose-900 truncate">
-                        {input ? `"${input}"` : `Listening (${formatSeconds(recordingSeconds)})...`}
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs font-black text-rose-900 truncate">
+                          {input ? `"${input}"` : `Listening (${formatSeconds(recordingSeconds)} / 01:00)...`}
+                        </div>
+                        {/* Live Sound Level Waveform Indicator */}
+                        <div className="flex items-center gap-0.5 h-3.5 px-1 bg-rose-200/70 rounded-md shrink-0">
+                          {[0.4, 0.8, 1.0, 0.7, 0.3].map((mul, bIdx) => {
+                            const h = Math.max(20, Math.min(100, Math.round(audioLevel * mul * 1.5)));
+                            return (
+                              <div
+                                key={bIdx}
+                                className="w-0.75 bg-rose-600 rounded-full transition-all duration-75"
+                                style={{ height: `${h}%` }}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                       <span className="text-[10px] text-rose-700 font-semibold truncate">
-                        {bhashiniConfig.name} ({bhashiniConfig.locale}) • Speak now
+                        {bhashiniConfig.name} ({bhashiniConfig.locale}) • Speak now (max 60s)
                       </span>
                     </div>
                   </div>

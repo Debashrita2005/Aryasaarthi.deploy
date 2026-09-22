@@ -331,4 +331,46 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).toContain('caste_certificate.pdf');
     expect(res.reply).toContain('Document Received');
   });
+
+  it('28. Extracts slots directly from OCR extracted text in document attachments', async () => {
+    const testSid = 'sid_ocr_extract_' + Date.now();
+    const res = await processChatTurn(
+      testSid,
+      'Please check my document',
+      [
+        {
+          name: 'caste_income_cert.jpg',
+          url: '/uploads/caste_income_cert.jpg',
+          extractedText: 'GOVERNMENT OF UTTAR PRADESH\nCASTE CERTIFICATE\nCategory: Scheduled Caste (SC)\nAnnual Income: 120000',
+          ocrConfidence: 88,
+          isLowConfidence: false,
+        } as any,
+      ]
+    );
+
+    expect(res.reply).toContain('caste_income_cert.jpg');
+    expect(res.reply).toContain('Document Analyzed');
+    expect(res.slots.sc_status).toBe('YES');
+    expect(res.slots.income).toBe(120000);
+  });
+
+  it('29. Gracefully advises user when document OCR has low confidence or is blurry', async () => {
+    const testSid = 'sid_ocr_blurry_' + Date.now();
+    const res = await processChatTurn(
+      testSid,
+      'Here is my certificate photo',
+      [
+        {
+          name: 'blurry_photo.jpg',
+          url: '/uploads/blurry_photo.jpg',
+          extractedText: 'x..1',
+          ocrConfidence: 22,
+          isLowConfidence: true,
+        } as any,
+      ]
+    );
+
+    expect(res.reply).toContain('blurry_photo.jpg');
+    expect(res.reply).toContain("Couldn't read that clearly, try a clearer photo or better lighting");
+  });
 });

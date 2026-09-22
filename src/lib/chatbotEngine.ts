@@ -502,7 +502,9 @@ function generateDynamicSynthesizedResponse(
   const asksAboutCostOrAmountUnsure = /\b(don t know|dont know|not sure|pata nahi|idea nahi|how much|kitna lagega|estimate|suggest amount|standard cost|kitna chahiye|cost kitna|typical cost)\b/i.test(norm);
   const asksAboutTenure = /\b(tenure|moratorium|holiday|grace period)\b/i.test(norm);
   const asksAboutEMI = !asksAboutTenure && /\b(emi|kist|installment|monthly payment|per month|har mahine|kitna bharna)\b/i.test(norm);
-  const asksAboutDocuments = /\b(document|documents|paper|praman patra|kagaz|checklist|kya lagega)\b/i.test(norm);
+  const asksAboutDocuments =
+    (!attachments || attachments.length === 0) &&
+    /\b(document|documents|paper|praman patra|kagaz|checklist|kya lagega)\b/i.test(norm);
   const asksToShowSchemes = /\b(show schemes|list schemes|all schemes|available schemes|kya schemes|which scheme|options|yojna dikhao|yojana|recommend scheme|best scheme)\b/i.test(norm);
   const asksAboutPartnersOrBanks = /\b(nearest|partner bank|sca|agency|branch|kaha milega|district office|bank branch|office address|authorized center|nearest center)\b/i.test(norm);
 
@@ -886,11 +888,23 @@ function generateDynamicSynthesizedResponse(
     );
   }
 
-  // Acknowledge user attached documents if provided
+  // Acknowledge user attached documents & OCR extracted text if provided
   if (attachments && attachments.length > 0) {
-    responseParts.push(
-      `📎 **Document Received:** Successfully attached ${attachments.map((a) => `**${a.name}**`).join(', ')} to your session context for scheme eligibility verification.`
-    );
+    for (const a of attachments) {
+      if ((a as any).isLowConfidence) {
+        responseParts.push(
+          `⚠️ **Document Uploaded (${a.name}):** Couldn't read that clearly, try a clearer photo or better lighting for automated verification.`
+        );
+      } else if ((a as any).extractedText) {
+        responseParts.push(
+          `📑 **Document Analyzed (${a.name}):** Successfully extracted text from document for verification.`
+        );
+      } else {
+        responseParts.push(
+          `📎 **Document Received:** Successfully attached **${a.name}** to your session context for scheme eligibility verification.`
+        );
+      }
+    }
   }
 
   // Handle new user introduction directly
@@ -1303,9 +1317,24 @@ export async function processChatTurn(
     }
   }
 
-  // Extract slots contextually
+  // Extract slots contextually from user text
   const { updated: newSlots, newlyDetected } = extractSlots(text, session.slots, session.lastQuestionAsked);
   session.slots = newSlots;
+
+  // If document attachments have OCR extracted text, run slot extraction on document context
+  if (attachments && attachments.length > 0) {
+    for (const att of attachments) {
+      if ((att as any).extractedText && !(att as any).isLowConfidence) {
+        const docExt = extractSlots((att as any).extractedText, session.slots, session.lastQuestionAsked);
+        session.slots = docExt.updated;
+        for (const slotKey of docExt.newlyDetected) {
+          if (!newlyDetected.includes(slotKey)) {
+            newlyDetected.push(slotKey);
+          }
+        }
+      }
+    }
+  }
 
   // Track question repetition
   const prevQ = session.lastQuestionAsked;
