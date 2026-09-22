@@ -1275,13 +1275,12 @@ export async function processChatTurn(
     if (isExplicitReset) {
       return {
         session_id: sessionId,
-        reply: "🔄 **Conversation Reset.**\n\nNamaste! I am **Arya**, your dedicated guide to NSFDC Government Schemes and Concessional Loans.\n\n---\n📋 **Basic Details Required for Scheme Recommendation:**\n💬 To find the best program with the lowest interest rate, **what type of business, venture, or educational purpose are you planning to pursue?**",
+        reply: "🔄 **Conversation Reset.**\n\n🙏 **Namaste! I am Arya**, your personal guide to Government Schemes and Concessional Loans.\n\nHow can I help you today? You can ask any question about loan eligibility, subsidies, interest rates, or tell me about your business or study plans.",
         quick_replies: [
-          "Small Business / Shop",
-          "Dairy / Animal Farming",
-          "Higher Education Loan",
-          "Tailoring / Boutique",
-          "Electric Auto / Transport"
+          "Explore All Schemes",
+          "Check Interest Rates",
+          "Collateral & Subsidies",
+          "How to Apply"
         ],
         matched_schemes: [],
         slots: session.slots,
@@ -1291,13 +1290,12 @@ export async function processChatTurn(
     if (isPureGreeting) {
       return {
         session_id: sessionId,
-        reply: "🙏 **Namaste! I am Arya**, your personal AI guide to Government Schemes. I am here to understand your exact livelihood or educational goals and connect you with the lowest-interest schemes.\n\n---\n📋 **Basic Details Required for Scheme Recommendation:**\n💬 To find the most suitable funding and subsidy program, **what type of business, venture, or educational scheme are you looking to start?**",
+        reply: "🙏 **Namaste! I am Arya**, your personal AI guide to Government Schemes and Concessional Loans.\n\nHow can I help you today? You can ask any question about loan eligibility, subsidies, interest rates, or introduce your trade/business plan.",
         quick_replies: [
-          "Small Business / Retail Shop",
-          "Dairy / Animal Husbandry",
-          "Tailoring / Boutique Unit",
-          "Higher Education Loan",
-          "Electric Auto / Transport"
+          "Explore All Schemes",
+          "Check Interest Rates",
+          "Collateral & Subsidies",
+          "How to Apply"
         ],
         matched_schemes: [],
         slots: session.slots,
