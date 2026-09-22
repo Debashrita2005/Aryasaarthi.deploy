@@ -1,0 +1,20 @@
+{
+  "version": "1.1.0",
+  "last_updated": "2026-09-22T11:20:00Z",
+  "sha256": "8d3e69bb0d97034c56e3001ad5940e4ab25e52a87178a9c366ff506cf2c3b88b",
+  "scheme_count": 11,
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-09-13",
+      "author": "AryaSaarthi Rule Engineering Team",
+      "description": "Initial baseline of NSFDC statutory schemes"
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-09-22",
+      "author": "Ask Arya Autonomous Rule Engine Overhaul",
+      "description": "Unified nsfdc_schemes.json as single ground-truth source of truth with explicit manual review flags, slab objects, and statutory reference citations."
+    }
+  ]
+}

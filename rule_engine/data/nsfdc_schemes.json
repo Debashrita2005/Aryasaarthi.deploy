@@ -1,0 +1,481 @@
+[
+  {
+    "scheme_id": "NSFDC-MCY-01",
+    "code": "MSY",
+    "name": "Mahila Samriddhi Yojana (MSY)",
+    "category": "self_employment",
+    "target_gender": "FEMALE",
+    "target_beneficiary": "sc_women",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 10000,
+      "max_amount": 140000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 50.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 4.0,
+      "rate_max_pct": 4.0,
+      "rate_type": "concessional_annual_fixed",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 36,
+      "tenure_months_max": 60,
+      "moratorium_months_standard": [1, 3],
+      "moratorium_months_max": 6,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "tailoring", "boutique", "silai", "beauty_parlor", "parlour", "handicrafts",
+      "women_enterprise", "grocery", "kirana", "saree", "apparel", "dairy", "mini_dairy"
+    ],
+    "description": "Statutory flagship microcredit scheme providing 100% project financing at 4.0% p.a. concessional interest with zero collateral exclusively for Scheduled Caste women entrepreneurs.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 4.1 (Mahila Samriddhi Yojana)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-MFS-01",
+    "code": "MFS",
+    "name": "Micro Finance Scheme (MFS)",
+    "category": "self_employment",
+    "target_gender": null,
+    "target_beneficiary": "sc_micro_entrepreneurs",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 5000,
+      "max_amount": 140000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 50.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 5.0,
+      "rate_max_pct": 6.5,
+      "rate_type": "concessional_annual",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 36,
+      "tenure_months_max": 60,
+      "moratorium_months_standard": [1, 3],
+      "moratorium_months_max": 6,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "dairy", "pashupalan", "cattle", "vegetable_vending", "street_vendor",
+      "grocery", "kirana", "poultry", "goat_farming", "bakri_palan", "small_trade", "repair_shop"
+    ],
+    "description": "Small-ticket collateral-free microcredit through State Channelizing Agencies (SCAs) and SHGs for tiny livelihood enterprises.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 4.2 (Micro Finance Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-TL-01",
+    "code": "TLS",
+    "name": "Term Loan Scheme (TLS)",
+    "category": "business",
+    "target_gender": null,
+    "target_beneficiary": "sc_commercial_entrepreneurs",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 50000,
+      "max_amount": 5000000,
+      "currency": "INR",
+      "cost_coverage_pct": 95.0,
+      "subsidy_pct_max": 35.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 6.0,
+      "rate_max_pct": 9.0,
+      "rate_type": "concessional_annual_slab_linked",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 60,
+      "tenure_months_max": 120,
+      "moratorium_months_standard": [3, 6],
+      "moratorium_months_max": 12,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "manufacturing", "service_unit", "shop", "retail", "small_industry",
+      "commercial_dairy", "food_processing", "workshop", "warehouse", "printing"
+    ],
+    "description": "Medium-to-large term credit for viable industrial, service, and commercial enterprises covering up to 95% project cost.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 3.1 (Term Loan Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-EDU-01",
+    "code": "ELS",
+    "name": "Education Loan Scheme (ELS)",
+    "category": "education",
+    "target_gender": null,
+    "target_beneficiary": "sc_students",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 500000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 10000,
+      "max_amount": 2000000,
+      "currency": "INR",
+      "cost_coverage_pct": 90.0,
+      "subsidy_pct_max": 0.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 4.0,
+      "rate_max_pct": 8.0,
+      "rate_type": "concessional_annual_gender_differentiated",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 60,
+      "tenure_months_max": 120,
+      "moratorium_months_standard": [6, 12],
+      "moratorium_months_max": 18,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "higher_education", "technical_courses", "engineering", "btech", "mbbs",
+      "medical", "management", "mba", "vocational", "abroad_study", "polytechnic", "degree"
+    ],
+    "description": "Concessional education loan for professional and technical courses in India (up to ₹10L) and abroad (up to ₹20L) with 0.5% extra rebate for women.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 5.1 (Education Loan Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-GRN-01",
+    "code": "GBS",
+    "name": "Green Business Scheme (GBS)",
+    "category": "business",
+    "target_gender": null,
+    "target_beneficiary": "sc_green_entrepreneurs",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 50000,
+      "max_amount": 3000000,
+      "currency": "INR",
+      "cost_coverage_pct": 90.0,
+      "subsidy_pct_max": 30.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 5.5,
+      "rate_max_pct": 7.5,
+      "rate_type": "concessional_annual",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 60,
+      "tenure_months_max": 120,
+      "moratorium_months_standard": [3, 6],
+      "moratorium_months_max": 12,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "solar", "solar_installation", "solar_panel", "electric_rickshaw", "e_rickshaw",
+      "battery_auto", "waste_recycling", "organic_farming", "clean_energy"
+    ],
+    "description": "Financial support for climate-resilient and green income generation micro-enterprises including solar power and electric mobility.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 6.1 (Green Business Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-TRP-01",
+    "code": "LVY",
+    "name": "Laghu Vyavasay Yojana (Transport/LVY)",
+    "category": "business",
+    "target_gender": null,
+    "target_beneficiary": "sc_transport_operators",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 50000,
+      "max_amount": 500000,
+      "currency": "INR",
+      "cost_coverage_pct": 95.0,
+      "subsidy_pct_max": 30.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 6.0,
+      "rate_max_pct": 7.0,
+      "rate_type": "concessional_annual",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 36,
+      "tenure_months_max": 60,
+      "moratorium_months_standard": [3, 6],
+      "moratorium_months_max": 6,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "transport", "auto_rickshaw", "small_truck", "passenger_vehicle", "goods_carrier", "toto"
+    ],
+    "description": "Credit for commercial transport vehicles and small logistics enterprises to empower SC drivers into vehicle owners.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 3.4 (Transport Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-DSY-01",
+    "code": "DSY",
+    "name": "Dheemant Shiksha Yojana (DSY)",
+    "category": "education",
+    "target_gender": null,
+    "target_beneficiary": "sc_diploma_students",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 10000,
+      "max_amount": 400000,
+      "currency": "INR",
+      "cost_coverage_pct": 95.0,
+      "subsidy_pct_max": 0.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 4.0,
+      "rate_max_pct": 6.0,
+      "rate_type": "concessional_annual",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 36,
+      "tenure_months_max": 60,
+      "moratorium_months_standard": [6, 12],
+      "moratorium_months_max": 12,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "vocational", "diploma", "skill_training", "iti", "certificate_course"
+    ],
+    "description": "Short-term technical education and vocational diploma credit assistance for youth aiming for quick industry employment.",
+    "statutory_reference": "NSFDC Operational Guidelines — Clause 5.2 (Vocational Education Scheme)",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NHFDC-DSY-01",
+    "code": "PWD-SWA",
+    "name": "Divyangjan Swavalamban Yojana (NHFDC/PwD)",
+    "category": "self_employment",
+    "target_gender": null,
+    "target_beneficiary": "pwd",
+    "requires_sc_certificate": false,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 500000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 10000,
+      "max_amount": 5000000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 40.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 4.0,
+      "rate_max_pct": 6.0,
+      "rate_type": "concessional_annual_pwd_rebated",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 36,
+      "tenure_months_max": 120,
+      "moratorium_months_standard": [6, 12],
+      "moratorium_months_max": 18,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "small_business", "dairy", "tailoring", "shop", "manufacturing", "services", "general", "pwd_unit"
+    ],
+    "description": "Dedicated concessional credit for Persons with Disabilities (Divyangjan) with up to 100% cost coverage and 1% extra rebate for women with disabilities.",
+    "statutory_reference": "NHFDC Self-Employment Guidelines 2024",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "MSJE-ADIP-01",
+    "code": "ADIP",
+    "name": "ADIP Assistive Aids & Motorized Tricycle Grant",
+    "category": "assistive_grant",
+    "target_gender": null,
+    "target_beneficiary": "pwd",
+    "requires_sc_certificate": false,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 360000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 0,
+      "max_amount": 50000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 100.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 0.0,
+      "rate_max_pct": 0.0,
+      "rate_type": "100pct_direct_grant",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 0,
+      "tenure_months_max": 0,
+      "moratorium_months_standard": [0, 0],
+      "moratorium_months_max": 0,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "assistive_device", "wheelchair", "motorized_tricycle", "hearing_aid", "prosthetics", "braille_kit"
+    ],
+    "description": "100% Direct Central Government grant providing motorized tricycles, wheelchairs, and assistive devices to Divyangjan beneficiaries.",
+    "statutory_reference": "Ministry of Social Justice & Empowerment ADIP Scheme Guidelines",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "NSFDC-SKL-01",
+    "code": "SDTP",
+    "name": "Skill Development Training Scheme (SDTP)",
+    "category": "skill_development",
+    "target_gender": null,
+    "target_beneficiary": "sc_unemployed_youth",
+    "requires_sc_certificate": true,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 300000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": false
+    },
+    "loan_limits": {
+      "min_amount": 0,
+      "max_amount": 50000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 100.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 0.0,
+      "rate_max_pct": 0.0,
+      "rate_type": "free_training_with_stipend",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 0,
+      "tenure_months_max": 0,
+      "moratorium_months_standard": [0, 0],
+      "moratorium_months_max": 0,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "skill_training", "vocational", "tailoring_course", "computer_hardware", "plumbing", "electrician"
+    ],
+    "description": "Fully funded vocational skill certification with monthly stipend to prepare SC candidates for direct placement or enterprise startup.",
+    "statutory_reference": "NSFDC Skill Development Programme Guidelines",
+    "version": "1.0.0"
+  },
+  {
+    "scheme_id": "MOLE-SVAN-01",
+    "code": "SVANIDHI",
+    "name": "PM SVANidhi (Open Micro-Credit for Street Vendors)",
+    "category": "self_employment",
+    "target_gender": null,
+    "target_beneficiary": "street_vendors_universal",
+    "requires_sc_certificate": false,
+    "income_slab": {
+      "min_income": 0,
+      "max_income": 500000,
+      "currency": "INR",
+      "slab_type": "annual_family_income",
+      "manual_review_required": true,
+      "review_notes": "Statutory ceiling not strictly specified in central portal; capped at 500k for recommender fallback."
+    },
+    "loan_limits": {
+      "min_amount": 10000,
+      "max_amount": 50000,
+      "currency": "INR",
+      "cost_coverage_pct": 100.0,
+      "subsidy_pct_max": 7.0,
+      "manual_review_required": false
+    },
+    "interest_rate": {
+      "rate_min_pct": 7.0,
+      "rate_max_pct": 9.5,
+      "rate_type": "interest_subsidy_7pct",
+      "manual_review_required": false
+    },
+    "repayment": {
+      "tenure_months_min": 12,
+      "tenure_months_max": 36,
+      "moratorium_months_standard": [1, 3],
+      "moratorium_months_max": 3,
+      "manual_review_required": false
+    },
+    "eligible_project_types": [
+      "street_vendor", "vegetable_vending", "tea_stall", "fast_food_cart", "hawker"
+    ],
+    "description": "Universal micro-credit for urban and peri-urban street vendors with 7% interest subsidy on timely digital repayments (universal open-category fallback).",
+    "statutory_reference": "Ministry of Housing and Urban Affairs PM SVANidhi Guidelines",
+    "version": "1.0.0"
+  }
+]

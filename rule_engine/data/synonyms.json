@@ -1,0 +1,86 @@
+{
+  "trades": {
+    "tailoring": [
+      "tailor", "tailoring", "silai", "boutique", "sewing", "garment", "garments",
+      "clothes", "clothing", "cloth", "saree", "sari", "sarees", "textile", "textiles",
+      "handloom", "dress making", "embroidery", "fashion", "apparel", "readymade",
+      "silai centre", "silai machine", "kapda dukan"
+    ],
+    "dairy": [
+      "dairy", "deri", "deri ka dukaan", "dairy farm", "cow", "cows", "buffalo", "buffaloes",
+      "milk", "doodh", "dudh", "pashupalan", "cattle", "dairy unit", "mini dairy", "bhains", "gaay"
+    ],
+    "goat_farming": [
+      "goat", "goats", "bakri", "bakra", "sheep", "bhed", "goat farming", "livestock",
+      "bakri palan", "goat rearing", "bhed palan"
+    ],
+    "poultry": [
+      "poultry", "chicken", "murgi", "egg", "eggs", "broiler", "layer", "poultry farm",
+      "murgi palan", "poultry unit"
+    ],
+    "grocery": [
+      "grocery", "kirana", "kirane ki dukan", "general store", "ration shop", "provision store",
+      "daily needs", "supermarket", "dukaan", "retail shop", "small shop"
+    ],
+    "transport": [
+      "transport", "auto", "auto rickshaw", "toto", "battery auto", "electric auto",
+      "e-rickshaw", "tempo", "van", "taxi", "cab", "goods carrier", "small commercial vehicle",
+      "driver", "gaadi"
+    ],
+    "solar": [
+      "solar", "solar panel", "clean energy", "green energy", "solar rooftop", "solar shop",
+      "solar business", "solar lighting"
+    ],
+    "education": [
+      "education", "higher education", "btech", "mbbs", "b.tech", "engineering", "medical",
+      "mba", "bba", "polytechnic", "diploma", "degree", "college fees", "hostel",
+      "abroad study", "foreign studies", "overseas education", "padhai", "shiksha"
+    ],
+    "beauty_parlor": [
+      "beauty parlor", "beauty parlour", "salon", "makeup", "cosmetics", "hair styling",
+      "beautician", "parlor", "parlour"
+    ],
+    "food_business": [
+      "tea stall", "chai", "bakery", "dhaba", "canteen", "fast food", "restaurant",
+      "catering", "tiffin", "sweet shop", "mithai", "halwai"
+    ],
+    "mobile_repair": [
+      "mobile repair", "phone repair", "electronics repair", "mobile accessories",
+      "mobile shop", "smartphone repair"
+    ],
+    "assistive_device": [
+      "wheelchair", "motorized tricycle", "tricycle", "hearing aid", "prosthetics",
+      "artificial limb", "braille kit", "walking stick", "divyang aid"
+    ]
+  },
+  "sc_status_terms": {
+    "affirmative": [
+      "sc", "scheduled caste", "dalit", "valmiki", "jatav", "chamar", "kori", "pasi",
+      "meghwal", "bhim", "yes", "haan", "hanji", "ha", "yes i am", "i belong to sc"
+    ],
+    "in_progress": [
+      "in progress", "applied", "bana nahi", "process me hai", "certificate pending",
+      "banwaya hai", "under process"
+    ],
+    "negative": [
+      "general", "obc", "open", "general category", "baniya", "brahmin", "yadav",
+      "rajput", "non sc", "not sc", "no"
+    ]
+  },
+  "gender_terms": {
+    "female": [
+      "female", "woman", "women", "mahila", "aurat", "lady", "girl", "mother",
+      "widow", "vidhwa", "single mother", "sister", "mrs", "miss", "shrimati"
+    ],
+    "male": [
+      "male", "man", "purush", "aadmi", "boy", "father", "brother", "mr", "shri"
+    ],
+    "other": [
+      "other", "transgender", "trans", "third gender"
+    ]
+  },
+  "pwd_terms": [
+    "pwd", "divyang", "divyangjan", "disabled", "handicap", "disability",
+    "blind", "ortho", "viklang", "physically challenged", "wheelchair user"
+  ]
+}
