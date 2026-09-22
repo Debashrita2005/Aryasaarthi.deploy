@@ -115,5 +115,24 @@ To eliminate security vulnerabilities, prevent silent fake authentication bypass
 6. Deleted unused `src/lib/auth/firebaseAdmin.ts` and pruned unused `JWT_SECRET_KEY` and private key variables.
 7. Verified that any authentication failure or missing configuration surfaces genuine Firebase error codes directly to the citizen UI.
 
+---
+
+## Decision 6: Chatbot Strict Verification Pipeline, Multi-Modal Input, and Bhashini Voice Integration
+
+### Date
+2026-09-22
+
+### Context
+1. **Gender Inferences from Names:** Previously, hardcoded first name regexes (`isMaleName`/`isFemaleName`) silently guessed gender upon user introduction, prematurely triggering gender-specific scheme disclosure (e.g. 4% interest rate under Mahila Samriddhi Yojana) before the citizen had stated their trade, caste status, or gender.
+2. **Premature Scheme & Rate Disclosure:** Early partial slot introductions were providing unsolicited rate and scheme recommendations before the mandatory baseline (`purpose`, `gender`, `sc_status`) had been established.
+3. **Voice Input Fragility:** The voice input lacked robust end-to-end Bhashini integration and visible UI error/status banners when mic access was denied.
+4. **Document Attachment:** Citizens needed a clear way to upload supporting documents (Aadhaar, Caste Certificate, Land records) in PDF/Image formats directly inside the conversational workflow.
+
+### Decisions
+1. **Elimination of Name-Based Gender Guessing:** Gender is never inferred from names; it is only captured via explicit user statements (e.g. "I am a woman", "mahila") or when answering the direct `GENDER` inquiry step.
+2. **Baseline Verification Guard (`hasFullBaseline`):** Loan amounts, scheme names (MSY, Micro Finance, TLS), and statutory interest rates (4%, 5%) are strictly prevented from premature disclosure during early greeting/introduction turns until `(slots.project_type || slots.purpose) && slots.gender && slots.sc_status` are collected.
+3. **Bhashini Voice Architecture:** Audio is captured natively via `MediaRecorder` and routed to `POST /api/bhashini/asr` as primary with browser `SpeechRecognition` as a graceful fallback. Text-to-speech leverages `bhashiniTTS` (`POST /api/bhashini/tts`) with browser `speechSynthesis` fallback. All permission denials and timeouts render visible alert banners within 2 seconds.
+4. **Multi-Modal Document Intake:** Added a file upload endpoint (`POST /api/chatbot/upload`) accepting images and PDFs (up to 10MB) with preview chips, cancellation buttons, and automated session attachment forwarding to `processChatTurn()`.
+
 
 

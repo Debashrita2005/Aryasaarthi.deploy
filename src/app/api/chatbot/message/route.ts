@@ -7,16 +7,19 @@ export async function POST(req: NextRequest) {
 
     const sessionId = body?.session_id;
     const userText = (body?.text ?? body?.message ?? '').toString().trim();
+    const attachments = Array.isArray(body?.attachments) ? body.attachments : undefined;
 
-    if (!sessionId || !userText) {
+    if (!sessionId || (!userText && (!attachments || attachments.length === 0))) {
       return NextResponse.json(
-        { error: 'Invalid payload. "session_id" and "text" or "message" are required.' },
+        { error: 'Invalid payload. "session_id" and ("text" or "attachments") are required.' },
         { status: 400 }
       );
     }
 
+    const effectiveText = userText || (attachments && attachments.length > 0 ? `Attached document: ${attachments.map((a: any) => a.name).join(', ')}` : '');
+
     // 100% Local On-Device Dynamic AI Dialogue Engine
-    const response = await processChatTurn(sessionId, userText);
+    const response = await processChatTurn(sessionId, effectiveText, attachments);
     return NextResponse.json(response);
 
   } catch (err: any) {

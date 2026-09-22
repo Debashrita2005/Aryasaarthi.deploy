@@ -299,13 +299,13 @@ function extractSlots(text: string, currentSlots: ChatSessionSlots, lastQuestion
   const newlyDetected: string[] = [];
 
   // 0. Extract User Name
-  const namePattern = /\b(?:my name is|my name|i am|i'm|im|naam hai|mera naam|mera name|call me|this is|myself|name:)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\b/i;
   const nameMatchHindi = text.match(/\b(?:mera naam|mera name|naam)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\s+hai\b/i);
-  const nameMatch = text.match(namePattern) || nameMatchHindi;
+  const namePattern = /\b(?:my name is|my name|i am|i'm|im|naam hai|mera naam|mera name|call me|this is|myself|name:)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\b/i;
+  const nameMatch = nameMatchHindi || text.match(namePattern);
   if (nameMatch) {
     let candidate = nameMatch[1].trim();
-    // Strip trailing connectors like 'and', 'i', 'who', 'from'
-    candidate = candidate.replace(/\b(and|i|who|from|in|at|with|want|need|to|looking|planning)\b.*$/i, '').trim();
+    // Strip trailing connectors like 'hai', 'hu', 'hun', 'and', 'i', 'who', 'from'
+    candidate = candidate.replace(/\b(hai|hu|hun|he|tha|thi|and|i|who|from|in|at|with|want|need|to|looking|planning)\b.*$/i, '').trim();
     const candidateLower = candidate.toLowerCase();
     const invalidNames = [
       'here', 'ready', 'looking', 'planning', 'interested', 'applying', 'asking',
@@ -377,21 +377,18 @@ function extractSlots(text: string, currentSlots: ChatSessionSlots, lastQuestion
     }
   }
 
-  // 3. Gender (detect from pronouns, explicit words, or known female/male names)
-  const isFemaleName = Boolean(slots.user_name && /\b(sneha|priya|pooja|puja|neha|anjali|ritu|sunita|anita|geeta|gita|rekha|radha|lakshmi|laxmi|kavita|shweta|swati|deepa|meena|suman|asha|aarti|divya|nisha|renu|mamta|seema|shashi|monika|komal|payal|simran|kajal|tanu|mansi|khushi|roshni|jyoti|preeti|priti|shilpa|sapna|pinky|pinki|chaya|babita|usha|maya|kamla|saroj|savita|sharda|manju)\b/i.test(slots.user_name));
-  const isMaleName = Boolean(slots.user_name && /\b(aditya|amit|rahul|rohit|rajesh|suresh|ramesh|vijay|ajay|anil|sunil|manoj|sanjay|vikas|vikram|alok|deepak|ashok|vinod|mukesh|dinesh|santosh|pankaj|ravindra|ravi|pradeep|sachin|vivek|arun|abhishek|manish|sandeep|gaurav|naveen|kuldeep|kamal|kishore|suraj|shyam|mohan|sohan|govind|gopal)\b/i.test(slots.user_name));
-
-  if (/\b(female|woman|women|mahila|aurat|lady|girl|mother|widow|vidhwa|sister|mrs|miss|shrimati)\b/i.test(norm) || isFemaleName) {
+  // 3. Gender (detect ONLY from explicit user statements, pronouns, or answers to GENDER question — NEVER guessed from a name)
+  if (/\b(female|woman|women|mahila|aurat|lady|girl|mother|widow|vidhwa|sister|mrs|miss|shrimati)\b/i.test(norm) || (lastQuestionAsked === 'GENDER' && /\b(female|mahila|aurat|woman|women|1)\b/i.test(norm))) {
     if (slots.gender !== 'FEMALE') {
       slots.gender = 'FEMALE';
       newlyDetected.push('gender');
     }
-  } else if (/\b(male|man|purush|aadmi|boy|father|brother|mr|shri)\b/i.test(norm) || isMaleName) {
+  } else if (/\b(male|man|purush|aadmi|boy|father|brother|mr|shri)\b/i.test(norm) || (lastQuestionAsked === 'GENDER' && /\b(male|purush|aadmi|man|boy|2)\b/i.test(norm))) {
     if (slots.gender !== 'MALE') {
       slots.gender = 'MALE';
       newlyDetected.push('gender');
     }
-  } else if (/\b(transgender|trans|other)\b/i.test(norm)) {
+  } else if (/\b(transgender|trans|other)\b/i.test(norm) || (lastQuestionAsked === 'GENDER' && /\b(trans|other|3)\b/i.test(norm))) {
     if (slots.gender !== 'OTHER') {
       slots.gender = 'OTHER';
       newlyDetected.push('gender');
@@ -483,10 +480,14 @@ function generateDynamicSynthesizedResponse(
   slots: ChatSessionSlots,
   lastQuestionAsked: string,
   repeatCountOrMap: number | Record<string, number> = 0,
-  newlyDetected: string[] = []
+  newlyDetected: string[] = [],
+  attachments?: Array<{ name: string; url: string; size?: number; type?: string }>
 ): { reply: string; quick_replies: string[]; questionType: string } {
   const text = userRawText.trim();
   const norm = normalize(text);
+
+  // Baseline criteria guard: Do not disclose scheme names, loan numbers, or interest rates prematurely until baseline is known
+  const hasFullBaseline = Boolean((slots.project_type || slots.purpose) && slots.gender && slots.sc_status);
 
   const getRepeatCount = (qType: string): number => {
     if (typeof repeatCountOrMap === 'number') {
@@ -885,11 +886,20 @@ function generateDynamicSynthesizedResponse(
     );
   }
 
+  // Acknowledge user attached documents if provided
+  if (attachments && attachments.length > 0) {
+    responseParts.push(
+      `📎 **Document Received:** Successfully attached ${attachments.map((a) => `**${a.name}**`).join(', ')} to your session context for scheme eligibility verification.`
+    );
+  }
+
   // Handle new user introduction directly
   if (newlyDetected.includes('user_name') && slots.user_name) {
     const firstName = slots.user_name.split(' ')[0];
     const tradeRef = tradeMention
-      ? `\n\n💡 **Your vision for ${tradeMention} is very well aligned with current welfare priorities.** The Government provides comprehensive financial backing covering equipment, raw materials, stock inventory, and initial operational expenses.${slots.gender === 'FEMALE' ? ' As a woman entrepreneur, you also qualify for exclusive interest subsidies (such as **4% p.a. interest under Mahila Samriddhi Yojana**) and 100% project financing.' : ''}`
+      ? (hasFullBaseline
+          ? `\n\n💡 **Your vision for ${tradeMention} is very well aligned with current welfare priorities.** The Government provides comprehensive financial backing covering equipment, raw materials, stock inventory, and initial operational expenses.${slots.gender === 'FEMALE' ? ' As a woman entrepreneur, you also qualify for exclusive interest subsidies (such as **4% p.a. interest under Mahila Samriddhi Yojana**) and 100% project financing.' : ''}`
+          : `\n\n💡 **Your vision for ${tradeMention} is noted.**`)
       : "";
     responseParts.push(
       `🙏 **Namaste ${firstName} ji! I am Arya**, your personal guide to Government Schemes. Glad to connect with you!${tradeRef}`
@@ -898,55 +908,93 @@ function generateDynamicSynthesizedResponse(
     // If user stated their trade in this turn without a new name introduction
     const firstName = slots.user_name ? slots.user_name.split(' ')[0] : "";
     const greeting = firstName ? `🙏 **Namaste ${firstName} ji!**\n\n` : "";
-    const womenContext = slots.gender === 'FEMALE' ? " As a woman entrepreneur, you also qualify for exclusive interest subsidies (such as **4% p.a. interest under Mahila Samriddhi Yojana**) and 100% project financing." : "";
-    responseParts.push(
-      `${greeting}💡 **Your vision for ${tradeMention} is very well aligned with current welfare priorities.** The Government provides comprehensive financial backing covering equipment, raw materials, stock inventory, and initial operational expenses.${womenContext}`
-    );
+    if (hasFullBaseline) {
+      const womenContext = slots.gender === 'FEMALE' ? " As a woman entrepreneur, you also qualify for exclusive interest subsidies (such as **4% p.a. interest under Mahila Samriddhi Yojana**) and 100% project financing." : "";
+      responseParts.push(
+        `${greeting}💡 **Your vision for ${tradeMention} is very well aligned with current welfare priorities.** The Government provides comprehensive financial backing covering equipment, raw materials, stock inventory, and initial operational expenses.${womenContext}`
+      );
+    } else {
+      responseParts.push(
+        `${greeting}💡 **Your vision for ${tradeMention} is noted.**`
+      );
+    }
   }
 
   // Handle newly detected slots with specific, informative government welfare context:
   if (newlyDetected.includes('amount') && slots.amount) {
     const moratText = slots.moratorium_months ? ` with a **${slots.moratorium_months}-month repayment moratorium (grace period)**` : '';
-    if (slots.amount <= 140000) {
-      responseParts.push(
-        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This falls comfortably within the statutory **Micro Finance Scheme** and **Mahila Samriddhi Yojana (MSY)** limit of up to ₹1,40,000. These programs are **100% collateral-free**, qualify for up to **50% government subsidy**, and offer low interest rates between **4% and 5% p.a.**`
-      );
+    if (hasFullBaseline) {
+      if (slots.amount <= 140000) {
+        responseParts.push(
+          `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This falls comfortably within the statutory **Micro Finance Scheme** and **Mahila Samriddhi Yojana (MSY)** limit of up to ₹1,40,000. These programs are **100% collateral-free**, qualify for up to **50% government subsidy**, and offer low interest rates between **4% and 5% p.a.**`
+        );
+      } else {
+        responseParts.push(
+          `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This is covered under the statutory **Term Loan Scheme (TLS)** (up to ₹50 Lakh), providing up to 95% total project cost financing at concessional interest rates of **6% to 8% p.a.** with a repayment moratorium.`
+        );
+      }
     } else {
       responseParts.push(
-        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}:** This is covered under the statutory **Term Loan Scheme (TLS)** (up to ₹50 Lakh), providing up to 95% total project cost financing at concessional interest rates of **6% to 8% p.a.** with a repayment moratorium.`
+        `✅ **Noted your funding requirement of ₹${slots.amount.toLocaleString('en-IN')}${moratText}.**`
       );
     }
   }
 
   if (newlyDetected.includes('sc_status')) {
-    if (slots.sc_status === 'YES') {
-      responseParts.push(
-        `✅ **Acknowledged (Scheduled Caste Category):** As a member of the Scheduled Caste community, you are fully entitled to direct NSFDC statutory concessional lending (statutory interest rates as low as 4% to 5% p.a., extensive capital subsidies, and dedicated district State Channelizing Agency backing).`
-      );
-    } else if (slots.sc_status === 'IN_PROGRESS') {
-      responseParts.push(
-        `✅ **Acknowledged (Certificate in Progress):** That is completely fine! You can explore and select your scheme right now. Tehsil and e-District portals issue verifiable certificates quickly, and local SCA offices actively assist with paperwork.`
-      );
-    } else if (slots.sc_status === 'NO') {
-      responseParts.push(
-        `ℹ️ **Understood:** While statutory NSFDC funds are dedicated exclusively to Scheduled Caste applicants, AryaSaarthi also connects you to universal open-credit schemes like **PM-SVANidhi (street vendor / micro credit)**, **PMEGP (up to 35% subsidy)**, and **Stand-Up India**.`
-      );
+    if (hasFullBaseline) {
+      if (slots.sc_status === 'YES') {
+        responseParts.push(
+          `✅ **Acknowledged (Scheduled Caste Category):** As a member of the Scheduled Caste community, you are fully entitled to direct NSFDC statutory concessional lending (statutory interest rates as low as 4% to 5% p.a., extensive capital subsidies, and dedicated district State Channelizing Agency backing).`
+        );
+      } else if (slots.sc_status === 'IN_PROGRESS') {
+        responseParts.push(
+          `✅ **Acknowledged (Certificate in Progress):** That is completely fine! You can explore and select your scheme right now. Tehsil and e-District portals issue verifiable certificates quickly, and local SCA offices actively assist with paperwork.`
+        );
+      } else if (slots.sc_status === 'NO') {
+        responseParts.push(
+          `ℹ️ **Understood:** While statutory NSFDC funds are dedicated exclusively to Scheduled Caste applicants, AryaSaarthi also connects you to universal open-credit schemes like **PM-SVANidhi (street vendor / micro credit)**, **PMEGP (up to 35% subsidy)**, and **Stand-Up India**.`
+        );
+      }
+    } else {
+      if (slots.sc_status === 'YES') {
+        responseParts.push(
+          `✅ **Acknowledged (Scheduled Caste Category):** Noted your category status for priority concessional lending.`
+        );
+      } else if (slots.sc_status === 'IN_PROGRESS') {
+        responseParts.push(
+          `✅ **Acknowledged (Certificate in Progress):** That is noted! We will guide you with registration and documentation.`
+        );
+      } else if (slots.sc_status === 'NO') {
+        responseParts.push(
+          `ℹ️ **Understood:** Noted. We will connect you to universal and open government schemes.`
+        );
+      }
     }
   }
 
   if (newlyDetected.includes('gender')) {
-    if (slots.gender === 'FEMALE') {
-      responseParts.push(
-        `🌸 **Understood (Woman Entrepreneur):** Women applicants are eligible for the flagship **Mahila Samriddhi Yojana (MSY)** at an exclusive concessional rate of just **4.0% p.a.** (the lowest in the country), with zero collateral requirements and 100% project financing!`
-      );
-    } else if (slots.gender === 'MALE') {
-      responseParts.push(
-        `👤 **Understood:** You qualify for all standard concessional programs including the **Micro Finance Scheme (5% p.a.)** and **Term Loan Scheme (6%–8% p.a.)**.`
-      );
-    } else if (slots.gender === 'OTHER') {
-      responseParts.push(
-        `✨ **Understood:** You are eligible for priority concessional lending and entrepreneurial support under statutory social justice welfare provisions.`
-      );
+    if (hasFullBaseline) {
+      if (slots.gender === 'FEMALE') {
+        responseParts.push(
+          `🌸 **Understood (Woman Entrepreneur):** Women applicants are eligible for the flagship **Mahila Samriddhi Yojana (MSY)** at an exclusive concessional rate of just **4.0% p.a.** (the lowest in the country), with zero collateral requirements and 100% project financing!`
+        );
+      } else if (slots.gender === 'MALE') {
+        responseParts.push(
+          `👤 **Understood:** You qualify for all standard concessional programs including the **Micro Finance Scheme (5% p.a.)** and **Term Loan Scheme (6%–8% p.a.)**.`
+        );
+      } else if (slots.gender === 'OTHER') {
+        responseParts.push(
+          `✨ **Understood:** You are eligible for priority concessional lending and entrepreneurial support under statutory social justice welfare provisions.`
+        );
+      }
+    } else {
+      if (slots.gender === 'FEMALE') {
+        responseParts.push(`🌸 **Understood:** Noted as a woman entrepreneur applicant.`);
+      } else if (slots.gender === 'MALE') {
+        responseParts.push(`👤 **Understood:** Noted your applicant profile.`);
+      } else if (slots.gender === 'OTHER') {
+        responseParts.push(`✨ **Understood:** Noted your applicant profile.`);
+      }
     }
   }
 
@@ -1163,7 +1211,8 @@ export function matchSchemes(slots: ChatSessionSlots): SchemeMatch[] {
  */
 export async function processChatTurn(
   sessionId: string,
-  userRawText: string
+  userRawText: string,
+  attachments?: Array<{ name: string; url: string; size?: number; type?: string }>
 ): Promise<ChatMessageResponse> {
   const text = userRawText.trim();
   const norm = normalize(text);
@@ -1271,7 +1320,8 @@ export async function processChatTurn(
     session.slots,
     session.lastQuestionAsked,
     session.questionRepeatCounts,
-    newlyDetected
+    newlyDetected,
+    attachments
   );
 
   if (dynamicResult.questionType === prevQ) {

@@ -169,3 +169,99 @@ export async function bhashiniASR(base64Audio: string, langCode: string): Promis
     return null;
   }
 }
+
+/**
+ * Calls Bhashini TTS API to synthesize Indian regional language speech.
+ */
+export async function bhashiniTTS(text: string, langCode: string): Promise<string | null> {
+  const userId = process.env.BHASHINI_USER_ID;
+  const apiKey = process.env.BHASHINI_API_KEY;
+  const inferenceKey = process.env.BHASHINI_INFERENCE_KEY;
+
+  if (!userId || !apiKey) {
+    return null;
+  }
+
+  const langConfig = getBhashiniConfig(langCode);
+
+  try {
+    const pipelinePayload = {
+      pipelineTasks: [
+        {
+          taskType: 'tts',
+          config: {
+            language: {
+              sourceLanguage: langConfig.bhashiniCode,
+            },
+          },
+        },
+      ],
+      pipelineRequestConfig: {
+        pipelineId: '64392f96daac500b55c543d6',
+      },
+    };
+
+    const pipeRes = await fetch(BHASHINI_PIPELINE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        userID: userId,
+        ulcaApiKey: apiKey,
+      },
+      body: JSON.stringify(pipelinePayload),
+    });
+
+    if (!pipeRes.ok) return null;
+
+    const pipeData: BhashiniPipelineResponse = await pipeRes.json();
+    const ttsConfig = pipeData.pipelineResponseConfig?.find((c) => c.taskType === 'tts');
+    const serviceId = ttsConfig?.config?.[0]?.serviceId;
+    const computeEndpoint =
+      pipeData.pipelineInferenceAPIEndPoint?.inferenceApiKey?.value ||
+      'https://dhruva-api.bhashini.gov.in/services/inference/pipeline';
+    const computedInferenceKey =
+      inferenceKey || pipeData.pipelineInferenceAPIEndPoint?.inferenceApiKey?.value;
+
+    if (!serviceId) return null;
+
+    const computePayload = {
+      pipelineTasks: [
+        {
+          taskType: 'tts',
+          config: {
+            language: {
+              sourceLanguage: langConfig.bhashiniCode,
+            },
+            serviceId: serviceId,
+            gender: 'female',
+          },
+        },
+      ],
+      inputData: {
+        input: [
+          {
+            source: text,
+          },
+        ],
+      },
+    };
+
+    const computeRes = await fetch(computeEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: computedInferenceKey || '',
+      },
+      body: JSON.stringify(computePayload),
+    });
+
+    if (!computeRes.ok) return null;
+
+    const computeData = await computeRes.json();
+    const audioContent = computeData.pipelineResponse?.[0]?.audio?.[0]?.audioContent;
+    return audioContent || null;
+  } catch (err) {
+    console.warn('Bhashini TTS Error:', err);
+    return null;
+  }
+}

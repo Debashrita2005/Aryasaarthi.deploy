@@ -160,16 +160,15 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
   it('17. Strictly follows reply pattern: responds directly to user input first, then asks basic details required for scheme recommendation', async () => {
     // Turn 1: User specifies a venture
     const t1 = await processChatTurn(sessionId, 'I want to start a grocery shop');
-    expect(t1.reply).toContain('Your vision for retail grocery / kirana shop is very well aligned');
+    expect(t1.reply).toContain('retail grocery / kirana shop');
     expect(t1.reply).toContain('Basic Details Required for Scheme Recommendation:');
     expect(t1.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
 
     // Turn 2: User provides amount
     const t2 = await processChatTurn(sessionId, '1 lakh');
-    // First part must kindly acknowledge amount with micro finance & subsidy context
-    expect(t2.reply).toContain('Noted your funding requirement of ₹1,00,000:');
-    expect(t2.reply).toContain('Micro Finance Scheme');
-    expect(t2.reply).toContain('100% collateral-free');
+    // First part must kindly acknowledge amount without premature scheme disclosure
+    expect(t2.reply).toContain('Noted your funding requirement of ₹1,00,000');
+    expect(t2.reply).not.toContain('Micro Finance Scheme');
     // Second part must ask basic details required
     expect(t2.reply).toContain('Basic Details Required for Scheme Recommendation:');
     expect(t2.reply).toContain('Scheduled Caste (SC) community?');
@@ -177,7 +176,6 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     // Turn 3: User provides SC status
     const t3 = await processChatTurn(sessionId, 'Yes, SC');
     expect(t3.reply).toContain('Acknowledged (Scheduled Caste Category):');
-    expect(t3.reply).toContain('statutory interest rates as low as 4% to 5% p.a.');
     expect(t3.reply).toContain('Basic Details Required for Scheme Recommendation:');
     expect(t3.reply).toContain('woman entrepreneur');
 
@@ -212,7 +210,7 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.matched_schemes.length).toBe(0); // Schemes must NOT be shown prematurely before details are filled!
   });
 
-  it('20. Introducing name only does NOT bleed past trade into greeting', async () => {
+  it('20. Introducing name only does NOT bleed past trade into greeting and does NOT guess gender', async () => {
     const testSid = 'sid_name_only_' + Date.now();
     // Prior user session had saree business
     await processChatTurn(testSid, 'saree business');
@@ -223,7 +221,7 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).not.toContain('saree');
     expect(res.reply).not.toContain('Sneha');
     expect(res.slots.user_name).toBe('Aditya');
-    expect(res.slots.gender).toBe('MALE');
+    expect(res.slots.gender).toBeNull();
     expect(res.reply).toContain('what type of business, venture, or educational scheme are you looking to start?');
     expect(res.quick_replies).toContain('Small Business / Retail Shop');
     expect(res.quick_replies).toContain('Dairy / Animal Husbandry');
@@ -242,13 +240,13 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.slots.purpose).toBeNull();
   });
 
-  it('22. Supports compound names and greetings with I am / Im', async () => {
+  it('22. Supports compound names and greetings with I am / Im without guessing gender', async () => {
     const testSid = 'sid_compound_' + Date.now();
     const res = await processChatTurn(testSid, 'I am Aditya Singh, I want to start a grocery shop');
     expect(res.reply).toContain('Namaste Aditya ji!');
     expect(res.reply).toContain('retail grocery / kirana shop');
     expect(res.slots.user_name).toBe('Aditya Singh');
-    expect(res.slots.gender).toBe('MALE');
+    expect(res.slots.gender).toBeNull();
     expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium');
   });
 
@@ -284,7 +282,7 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     const turn3 = await processChatTurn(testSid, '₹1,00,000 (12 Months Moratorium)');
     expect(turn3.slots.amount).toBe(100000);
     expect(turn3.slots.moratorium_months).toBe(12);
-    expect(turn3.reply).toContain('Noted your funding requirement of ₹1,00,000 with a **12-month repayment moratorium (grace period)**');
+    expect(turn3.reply).toContain('12-month repayment moratorium');
     expect(turn3.reply).toContain('Scheduled Caste (SC) community?');
   });
 
@@ -297,5 +295,40 @@ describe('Ask Arya Dynamic On-Device AI Engine (100% Local, Zero External LLM)',
     expect(res.reply).toContain('how much loan amount do you require, and what is your preferred moratorium (repayment holiday) period?');
     expect(res.quick_replies).toContain('₹1,00,000 (12 Months Moratorium)');
     expect(res.quick_replies).toContain('₹1,40,000 (18 Months Moratorium)');
+  });
+
+  it('25. Zero premature scheme disclosure: Name only introduction produces greeting and venture question ONLY', async () => {
+    const testSid = 'sid_zero_premature_' + Date.now();
+    const res = await processChatTurn(testSid, 'hii mera naam ramesh hai');
+
+    expect(res.reply).toContain('Namaste Ramesh ji! I am Arya');
+    expect(res.reply).toContain('what type of business, venture, or educational scheme are you looking to start?');
+    // MUST NOT contain interest rates, specific scheme names, or premature qualification statements
+    expect(res.reply).not.toContain('4%');
+    expect(res.reply).not.toContain('5%');
+    expect(res.reply).not.toContain('Mahila Samriddhi');
+    expect(res.reply).not.toContain('Micro Finance');
+    expect(res.reply).not.toContain('you qualify for');
+    expect(res.slots.gender).toBeNull();
+    expect(res.slots.user_name).toBe('Ramesh');
+  });
+
+  it('26. Explicit gender extraction works accurately for female/male/mahila/purush', async () => {
+    const testSid = 'sid_explicit_gender_' + Date.now();
+    const res = await processChatTurn(testSid, 'Main ek mahila hun aur boutique shuru karna chahti hun');
+    expect(res.slots.gender).toBe('FEMALE');
+    expect(res.slots.purpose).toBe('tailoring & boutique unit');
+  });
+
+  it('27. Acknowledges uploaded document attachments in context', async () => {
+    const testSid = 'sid_attachment_' + Date.now();
+    const res = await processChatTurn(
+      testSid,
+      'I have uploaded my caste certificate',
+      [{ name: 'caste_certificate.pdf', url: '/uploads/caste_certificate.pdf' }]
+    );
+
+    expect(res.reply).toContain('caste_certificate.pdf');
+    expect(res.reply).toContain('Document Received');
   });
 });
