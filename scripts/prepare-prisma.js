@@ -9,7 +9,8 @@ if (!fs.existsSync(schemaPath)) {
 
 const schemaContent = fs.readFileSync(schemaPath, 'utf8');
 const dbUrl = process.env.DATABASE_URL || '';
-const isPostgres = dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://');
+const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+const isPostgres = dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://') || (isRailway && !dbUrl.startsWith('file:'));
 const targetProvider = isPostgres ? 'postgresql' : 'sqlite';
 
 const currentProviderMatch = schemaContent.match(/datasource\s+db\s*\{[\s\S]*?provider\s*=\s*"([^"]+)"/);
