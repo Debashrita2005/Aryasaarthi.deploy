@@ -32,7 +32,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://127.0.0.1:8000/health || exit 1
+  CMD curl -f http://127.0.0.1:${PORT:-8000}/health || exit 1
 
-# Run with Gunicorn + Uvicorn workers for production concurrency
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "main:app"]
+# Run with Gunicorn + Uvicorn workers binding to Railway dynamic PORT
+CMD ["sh", "-c", "gunicorn -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} main:app"]

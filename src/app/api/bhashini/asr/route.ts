@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
       asrFormData.append('audio_base64', audio);
       asrFormData.append('language', language);
 
-      const localRes = await fetch('http://127.0.0.1:8000/api/asr/transcribe', {
+      const pythonUrl = process.env.PYTHON_ENGINE_URL || 'http://127.0.0.1:8000';
+      const localRes = await fetch(`${pythonUrl}/api/asr/transcribe`, {
         method: 'POST',
         body: asrFormData,
       });

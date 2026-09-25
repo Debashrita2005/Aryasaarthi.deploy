@@ -1,7 +1,8 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -52,14 +53,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for Next.js frontend communication
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Enable CORS for Next.js frontend communication (supports FRONTEND_URL env var + localhost)
+frontend_env = os.getenv("FRONTEND_URL", "")
+cors_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+if frontend_env:
+    for u in frontend_env.split(","):
+        clean_u = u.strip().rstrip("/")
+        if clean_u and clean_u not in cors_origins:
+            cors_origins.append(clean_u)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Register Ask Arya Chatbot routes
 from chatbot.routes import router as chatbot_router
@@ -157,6 +178,97 @@ async def get_nearby_partners(state: str = Query(..., description="State name to
     """Returns verified partner agencies and SCAs for the requested state."""
     partners = await db.get_partners_by_state(state)
     return {"state": state, "count": len(partners), "partners": partners}
+
+try:
+    import multipart
+    MULTIPART_AVAILABLE = True
+except ImportError:
+    MULTIPART_AVAILABLE = False
+
+if MULTIPART_AVAILABLE:
+    @app.post("/api/ocr/extract")
+    async def extract_ocr(
+        file: UploadFile = File(...),
+        is_handwritten: bool = Form(False),
+        lang_hint: str = Form("en"),
+    ):
+        """Multi-script OCR endpoint for document and certificate extraction."""
+        try:
+            content = await file.read()
+            if not content:
+                raise HTTPException(status_code=400, detail="Empty file provided.")
+            from chatbot.ocr import extract_text_from_image
+            res = extract_text_from_image(content, lang_hint=lang_hint, is_handwritten=is_handwritten)
+            return {
+                "success": True,
+                "text": res.get("text", "") or "",
+                "confidence": round(float(res.get("confidence", 0.0)) * 100, 1),
+                "is_low_confidence": bool(res.get("is_low_confidence", False)),
+                "script": res.get("script_detected", "Latin") or "Latin",
+                "engine": res.get("engine", "tesseract") or "tesseract"
+            }
+        except Exception as e:
+            logger.warning("OCR processing error: %s", e)
+            return {
+                "success": False,
+                "text": "",
+                "confidence": 0.0,
+                "is_low_confidence": True,
+                "error": str(e)
+            }
+
+    @app.post("/api/asr/transcribe")
+    async def transcribe_asr(
+        audio_file: Optional[UploadFile] = File(None),
+        audio_base64: Optional[str] = Form(None),
+        language: str = Form("hi"),
+    ):
+        """Speech-to-text transcription endpoint."""
+        try:
+            audio_bytes = None
+            if audio_file:
+                audio_bytes = await audio_file.read()
+            elif audio_base64:
+                import base64
+                clean_b64 = audio_base64.split(",", 1)[1] if "," in audio_base64 else audio_base64
+                audio_bytes = base64.b64decode(clean_b64)
+            if not audio_bytes:
+                raise HTTPException(status_code=400, detail="No audio provided.")
+            from chatbot.language_service import speech_to_text
+            transcription = speech_to_text(audio_bytes, source_lang=language)
+            return {
+                "success": bool(transcription and transcription.strip()),
+                "text": transcription or "",
+                "language": language,
+                "source": "bhashini_or_local"
+            }
+        except Exception as e:
+            logger.warning("ASR processing error: %s", e)
+            return {
+                "success": False,
+                "text": "",
+                "language": language,
+                "error": str(e)
+            }
+else:
+    @app.post("/api/ocr/extract")
+    async def extract_ocr_fallback():
+        return {
+            "success": False,
+            "text": "",
+            "confidence": 0.0,
+            "is_low_confidence": True,
+            "error": "python-multipart is required for OCR upload. Install via pip install python-multipart."
+        }
+
+    @app.post("/api/asr/transcribe")
+    async def transcribe_asr_fallback():
+        return {
+            "success": False,
+            "text": "",
+            "language": "hi",
+            "error": "python-multipart is required for ASR upload. Install via pip install python-multipart."
+        }
 
 if __name__ == "__main__":
     import uvicorn

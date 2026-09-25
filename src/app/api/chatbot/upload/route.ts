@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
           const fileBlob = new Blob([buffer], { type: file.type });
           ocrFormData.append('file', fileBlob, filename);
 
-          const fastApiRes = await fetch('http://127.0.0.1:8000/api/ocr/extract', {
+          const pythonUrl = process.env.PYTHON_ENGINE_URL || 'http://127.0.0.1:8000';
+          const fastApiRes = await fetch(`${pythonUrl}/api/ocr/extract`, {
             method: 'POST',
             body: ocrFormData,
             signal: controller.signal,

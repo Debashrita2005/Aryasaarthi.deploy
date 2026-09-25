@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import type { VerifiedScheme } from '@prisma/client';
 import { SCHEME_CONFIG_VERSION } from '@/lib/schemeData';
 import { getActiveSchemes } from '@/lib/activeSchemes';
 import { ALL_VERIFIED_SCHEMES } from '@/lib/verifiedSchemesData';
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (dbSchemes && dbSchemes.length > 0) {
-      verifiedList = dbSchemes.map((s) => ({
+      verifiedList = dbSchemes.map((s: VerifiedScheme) => ({
         ...s,
         documents: JSON.parse(s.documentsJson),
       }));
