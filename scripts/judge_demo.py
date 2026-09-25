@@ -17,10 +17,20 @@ import sys
 import json
 
 # Setup import path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKEND_DIR = os.path.join(BASE_DIR, "backend")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# If running from scripts/
+if os.path.basename(CURRENT_DIR) == "scripts":
+    REPO_ROOT = os.path.dirname(CURRENT_DIR)
+elif os.path.basename(CURRENT_DIR) == "backend":
+    REPO_ROOT = os.path.dirname(CURRENT_DIR)
+else:
+    REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
+BACKEND_DIR = os.path.join(REPO_ROOT, "backend")
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from chatbot.rule_engine import recommend_schemes, compute_no_match_explanation
 from chatbot.dialogue_manager import DialogueManager

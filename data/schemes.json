@@ -1,0 +1,303 @@
+[
+  {
+    "id": 1,
+    "scheme_id": "SCHEME_PMKISAN_01",
+    "name": "PM-KISAN Samman Nidhi",
+    "category": "Direct Income Support",
+    "description": "Financial benefit of ₹6,000 per year payable in three equal installments to all landholding farmer families across the country.",
+    "benefits": "₹6,000 per year directly transferred to the farmer's bank account in three equal installments of ₹2,000 every 4 months.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": null,
+      "occupations": ["farmer", "small farmer", "marginal farmer", "landholder"],
+      "states": ["All", "West Bengal", "Uttar Pradesh", "Bihar", "Maharashtra", "Punjab", "Haryana", "Madhya Pradesh", "Rajasthan"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": true,
+      "excluded_categories": ["Institutional landholders", "Serving or retired government employees", "Income tax payers in last assessment year"]
+    },
+    "documents": [
+      "Aadhaar Card",
+      "Land Ownership Documents / RoR (Khatian/Patta)",
+      "Bank Account Details (linked to Aadhaar)",
+      "Passport size photograph"
+    ],
+    "application_process": "1. Apply online via PM-KISAN portal (pmkisan.gov.in) or nearest CSC / Farmer Service Center. 2. Enter Aadhaar details and upload land records. 3. Verification by local Revenue / Agriculture Department. 4. Direct Benefit Transfer initiated.",
+    "official_source": "https://pmkisan.gov.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["pm kisan", "kisan samman", "farmer income", "farmer grant", "financial assistance", "cash transfer", "kheti", "chash"]
+  },
+  {
+    "id": 2,
+    "scheme_id": "SCHEME_KCC_02",
+    "name": "Kisan Credit Card (KCC) Scheme",
+    "category": "Agricultural Credit & Loans",
+    "description": "Provides adequate and timely credit to farmers for agricultural cultivation, post-harvest expenses, and allied activities at subsidized interest rates.",
+    "benefits": "Short-term crop loan up to ₹3,00,000 at an effective interest rate of 4% per annum (with prompt repayment incentive). Covers cultivation, maintenance of farm assets, and domestic consumption needs.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": 75,
+      "occupations": ["farmer", "tenant farmer", "sharecropper", "oral lessee", "dairy farmer", "poultry farmer", "fisheries worker"],
+      "states": ["All"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": false,
+      "excluded_categories": ["Defaulters with other institutional lenders"]
+    },
+    "documents": [
+      "Duly filled application form",
+      "Identity Proof (Aadhaar / Voter ID / PAN)",
+      "Address Proof",
+      "Land Record Documents / Tenant Agreement",
+      "Crop details / Cultivation proof"
+    ],
+    "application_process": "1. Visit nearest public sector, cooperative, or regional rural bank branch. 2. Submit KCC one-page application form with land/crop details. 3. Bank sanctions credit limit within 14 days and issues RuPay KCC card.",
+    "official_source": "https://agricoop.gov.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["kcc", "kisan credit card", "crop loan", "farm loan", "subsidized interest", "agricultural loan", "working capital"]
+  },
+  {
+    "id": 3,
+    "scheme_id": "SCHEME_PMFBY_03",
+    "name": "Pradhan Mantri Fasal Bima Yojana (PMFBY)",
+    "category": "Crop Insurance",
+    "description": "Comprehensive risk insurance covering yield losses due to non-preventable natural risks from pre-sowing to post-harvest stages.",
+    "benefits": "Maximum insurance coverage for food and oilseed crops at ultra-low premium rates: 2% for Kharif, 1.5% for Rabi, and 5% for commercial/horticultural crops. Balance premium subsidized by Central and State Governments.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": null,
+      "occupations": ["farmer", "sharecropper", "tenant farmer", "grower"],
+      "states": ["All", "West Bengal", "Uttar Pradesh", "Maharashtra", "Madhya Pradesh", "Rajasthan"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": true,
+      "crops": ["Paddy", "Wheat", "Maize", "Mustard", "Potato", "Jute", "Pulses", "Cotton", "Sugarcane"],
+      "excluded_categories": []
+    },
+    "documents": [
+      "Aadhaar Card",
+      "Land Record Certificate (LPC / RoR)",
+      "Sowing Certificate issued by Gram Panchayat / Village Officer",
+      "Bank Passbook / Cancelled Cheque"
+    ],
+    "application_process": "1. Register on the PMFBY portal (pmfby.gov.in) or via local bank branch/CSC within notification deadline. 2. Select crop season, district, and notify sown area. 3. Pay beneficiary share of premium.",
+    "official_source": "https://pmfby.gov.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["crop insurance", "fasal bima", "pmfby", "crop loss", "drought", "flood damage", "harvest loss", "hailstorm"]
+  },
+  {
+    "id": 4,
+    "scheme_id": "SCHEME_KRISHAK_BANDHU_04",
+    "name": "Krishak Bandhu Scheme (West Bengal)",
+    "category": "State Agricultural Assistance",
+    "description": "Flagship West Bengal state scheme providing assured financial assistance and term life insurance to all farmers and recorded bhagchasis.",
+    "benefits": "Direct financial aid up to ₹10,000 per year (minimum ₹4,000 for 1 acre or less, pro-rata for larger holdings) paid in two installments during Kharif and Rabi seasons. Also provides ₹2,00,000 death benefit for farmer families.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": 60,
+      "occupations": ["farmer", "bhagchasi", "sharecropper", "cultivator"],
+      "states": ["West Bengal"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": true,
+      "excluded_categories": ["Non-residents of West Bengal"]
+    },
+    "documents": [
+      "Voter ID (EPIC) Card",
+      "Aadhaar Card",
+      "Land RoR (Porcha) / Recorded Bhagchasi certificate",
+      "Bank Passbook",
+      "Mobile number"
+    ],
+    "application_process": "1. Collect application form from Assistant Director of Agriculture (ADA) block office or Duare Sarkar camps. 2. Attach Porcha and bank details. 3. Approval and DBT transfer to bank account.",
+    "official_source": "https://krishakbandhu.wb.gov.in",
+    "state": "West Bengal",
+    "active": true,
+    "keywords": ["krishak bandhu", "west bengal farmer", "bengal agriculture", "porcha", "bhagchasi", "duare sarkar", "khatian"]
+  },
+  {
+    "id": 5,
+    "scheme_id": "SCHEME_AIF_05",
+    "name": "Agriculture Infrastructure Fund (AIF)",
+    "category": "Farm Infrastructure & Term Loans",
+    "description": "Medium to long-term debt financing facility for investment in viable post-harvest management infrastructure and community farming assets.",
+    "benefits": "Interest subvention of 3% per annum on loans up to ₹2 Crores for a maximum period of 7 years. Credit guarantee coverage under CGTMSE.",
+    "eligibility_data": {
+      "min_age": 21,
+      "max_age": null,
+      "occupations": ["farmer", "agri-entrepreneur", "fpo", "shg", "primary agricultural credit society", "dairy farmer"],
+      "states": ["All"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": false,
+      "excluded_categories": ["Non-agricultural commercial projects"]
+    },
+    "documents": [
+      "Detailed Project Report (DPR)",
+      "Land ownership or long-term lease agreement for site",
+      "KYC documents of applicant / promoters",
+      "Bank balance sheet / past financial statements (if existing entity)"
+    ],
+    "application_process": "1. Register on AIF Portal (agriinfra.dac.gov.in). 2. Submit online loan application with DPR. 3. Ministry appraisal and automated forwarding to chosen bank. 4. Sanction and interest subsidy activation.",
+    "official_source": "https://agriinfra.dac.gov.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["aif", "agriculture infrastructure", "warehouse loan", "cold storage", "sorting grading", "post harvest", "processing unit"]
+  },
+  {
+    "id": 6,
+    "scheme_id": "SCHEME_SMAM_06",
+    "name": "Sub-Mission on Agricultural Mechanization (SMAM)",
+    "category": "Farm Machinery Subsidy",
+    "description": "Increases agricultural productivity and reduces drudgery by providing subsidies for purchase of tractors, power tillers, rotavators, and implements.",
+    "benefits": "40% to 50% capital subsidy on purchase of approved agricultural machinery and implements. Up to 80% subsidy for setting up Custom Hiring Centers (CHCs).",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": null,
+      "occupations": ["farmer", "small farmer", "marginal farmer", "women farmer", "sc_st_farmer"],
+      "states": ["All", "West Bengal", "Uttar Pradesh", "Bihar", "Madhya Pradesh", "Maharashtra"],
+      "max_land_area": null,
+      "max_income": null,
+      "requires_land": true,
+      "excluded_categories": ["Farmers who availed tractor subsidy within last 5-7 years"]
+    },
+    "documents": [
+      "Aadhaar Card",
+      "Land Record (Khatiyan / Jamabandi / Porcha)",
+      "Bank Passbook",
+      "Caste Certificate (for SC/ST higher subsidy)",
+      "Valid Driving License (for tractor / power tiller)"
+    ],
+    "application_process": "1. Register on agrimachinery.nic.in portal. 2. Select machinery manufacturer and dealer. 3. Block Agriculture Officer inspects and issues permit. 4. Purchase machine and receive direct DBT subsidy.",
+    "official_source": "https://agrimachinery.nic.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["tractor subsidy", "power tiller", "farm machinery", "smam", "rotavator", "harvester", "custom hiring", "agrimachinery"]
+  },
+  {
+    "id": 7,
+    "scheme_id": "SCHEME_PMKSY_07",
+    "name": "Pradhan Mantri Krishi Sinchayee Yojana (Per Drop More Crop)",
+    "category": "Micro-Irrigation Subsidy",
+    "description": "Promotes micro-irrigation systems (drip and sprinkler) to enhance water efficiency and reduce farming water costs.",
+    "benefits": "Up to 55% subsidy for small and marginal farmers (45% for other farmers) for installation of drip and sprinkler irrigation equipment on farm lands.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": null,
+      "occupations": ["farmer", "horticulture grower", "vegetable cultivator", "orchard farmer"],
+      "states": ["All"],
+      "max_land_area": 12.5,
+      "max_income": null,
+      "requires_land": true,
+      "excluded_categories": ["Lands without assured water source"]
+    },
+    "documents": [
+      "Aadhaar Card",
+      "Land Ownership Documents (RoR/7-12/Khatiyan)",
+      "Water source availability certificate / Electricity bill of pump",
+      "Field map / layout of proposed micro-irrigation system"
+    ],
+    "application_process": "1. Apply via State Agriculture / Horticulture Department portal. 2. Technical feasibility survey by empaneled irrigation agency. 3. Installation of drip/sprinkler kit. 4. Physical verification and release of subsidy.",
+    "official_source": "https://pmksy.gov.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["drip irrigation", "sprinkler", "per drop more crop", "pmksy", "irrigation subsidy", "water saving", "piped irrigation"]
+  },
+  {
+    "id": 8,
+    "scheme_id": "SCHEME_MFS_08",
+    "name": "NSFDC Micro Finance Scheme (MFS)",
+    "category": "Micro-Credit & Self Employment",
+    "description": "Direct micro-credit up to ₹1,40,000 for rural artisans, small shops, livestock rearing, and micro income-generating activities for SC beneficiaries.",
+    "benefits": "Loan up to ₹1,40,000 at capped 6.5% per annum interest rate, with 36 months repayment tenure and 3 months moratorium.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": 60,
+      "occupations": ["artisan", "tailor", "shopkeeper", "dairy farmer", "poultry farmer", "small vendor", "self-employed"],
+      "states": ["All"],
+      "max_land_area": null,
+      "max_income": 300000.0,
+      "requires_land": false,
+      "sc_required": true,
+      "excluded_categories": ["Annual family income exceeding ₹3,00,000"]
+    },
+    "documents": [
+      "Aadhaar Card",
+      "SC Caste Certificate issued by competent revenue authority",
+      "Family Income Certificate (up to ₹3 Lakh)",
+      "Bank Account Passbook",
+      "Quotation / Business Activity Estimate"
+    ],
+    "application_process": "1. Submit application through State Channelizing Agency (SCA) or empaneled rural banks. 2. SCA scrutiny and sanction. 3. Direct fund disbursement to applicant's bank account.",
+    "official_source": "https://nsfdc.nic.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["micro finance", "nsfdc", "sc loan", "small business", "village shop", "artisan loan", "low interest credit"]
+  },
+  {
+    "id": 9,
+    "scheme_id": "SCHEME_MSY_09",
+    "name": "Mahila Samriddhi Yojana (MSY)",
+    "category": "Women Entrepreneurship & Micro-Credit",
+    "description": "Exclusive micro-enterprise loan for rural women entrepreneurs to set up tailoring units, beauty parlors, handloom, and grocery stores.",
+    "benefits": "Loan up to ₹1,40,000 per woman beneficiary at a highly subsidized interest rate of 4% per annum. Flexible repayment up to 36 months.",
+    "eligibility_data": {
+      "min_age": 18,
+      "max_age": 55,
+      "gender": "Female",
+      "occupations": ["tailor", "weaver", "artisan", "beautician", "shopkeeper", "poultry farmer", "dairy worker"],
+      "states": ["All"],
+      "max_land_area": null,
+      "max_income": 300000.0,
+      "requires_land": false,
+      "sc_required": true,
+      "excluded_categories": ["Male applicants", "Family income above ₹3 Lakh"]
+    },
+    "documents": [
+      "Aadhaar Card & Voter ID",
+      "SC Caste Certificate",
+      "Income Certificate (under ₹3,00,000)",
+      "Bank Passbook in beneficiary's name",
+      "Project / Stitching Machine estimate"
+    ],
+    "application_process": "1. Apply individually or via Self Help Group (SHG) to State Channelizing Agency (SCA). 2. Field verification by SCA field officer. 3. Fast-track sanction within 30 days.",
+    "official_source": "https://nsfdc.nic.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["mahila samriddhi", "women loan", "tailoring loan", "sewing machine", "boutique", "beauty parlor", "sc women grant"]
+  },
+  {
+    "id": 10,
+    "scheme_id": "SCHEME_EDULOAN_10",
+    "name": "Higher Education Loan Scheme (ELIS)",
+    "category": "Education Loan",
+    "description": "Concessional education loans for pursuing higher professional, technical, and engineering courses in India and abroad.",
+    "benefits": "Loan up to ₹20,00,000 for courses in India and up to ₹30,00,000 for studies abroad. Interest rate of 4% per annum for male students and 3.5% per annum for female students.",
+    "eligibility_data": {
+      "min_age": 17,
+      "max_age": 35,
+      "occupations": ["student", "scholar", "aspirant"],
+      "states": ["All"],
+      "max_land_area": null,
+      "max_income": 300000.0,
+      "requires_land": false,
+      "sc_required": true,
+      "excluded_categories": ["Non-accredited institution courses"]
+    },
+    "documents": [
+      "Admission Letter from recognized university/college",
+      "Fee structure breakdown",
+      "10th, 12th, and Degree marksheets",
+      "Caste Certificate & Income Certificate",
+      "Co-borrower KYC and income proof"
+    ],
+    "application_process": "1. Apply online via NSFDC portal or State Channelizing Agency. 2. Provide admission letter and fee schedule. 3. Sanction and fee disbursement directly to educational institution.",
+    "official_source": "https://nsfdc.nic.in",
+    "state": "Central",
+    "active": true,
+    "keywords": ["education loan", "student loan", "college fees", "study abroad", "btech", "mbbs", "professional courses", "low interest student loan"]
+  }
+]

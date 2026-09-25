@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import sharp from 'sharp';
-import Tesseract from 'tesseract.js';
 
 const ALLOWED_TYPES = [
   'image/jpeg',
@@ -14,7 +12,7 @@ const ALLOWED_TYPES = [
   'application/pdf',
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB limit
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB limit
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +26,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
       return NextResponse.json(
         {
           success: false,
@@ -42,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the maximum limit of 10MB.`,
+          error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the maximum limit of 15MB.`,
         },
         { status: 400 }
       );
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const fileUrl = `/uploads/${filename}`;
 
-    // OCR Processing for Images (Hindi + English)
+    // Fast Non-blocking OCR Processing for Images
     let extractedText = '';
     let ocrConfidence = 0;
     let isLowConfidence = false;
@@ -69,30 +67,61 @@ export async function POST(req: NextRequest) {
     const isImageForOCR = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type);
     if (isImageForOCR) {
       try {
-        // 1. Image Preprocessing via Sharp: grayscale, contrast normalization & subtle sharpen
-        let processedBuffer: Buffer = buffer;
+        // Strategy 1: High-Speed In-Memory FastAPI OCR (already warmed up on port 8000)
+        let ocrCompleted = false;
         try {
-          processedBuffer = await sharp(buffer)
-            .grayscale()
-            .normalize()
-            .sharpen()
-            .toBuffer();
-        } catch (sharpErr) {
-          console.warn('Sharp preprocessing error (using raw buffer):', sharpErr);
-          processedBuffer = buffer;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3500);
+
+          const ocrFormData = new FormData();
+          const fileBlob = new Blob([buffer], { type: file.type });
+          ocrFormData.append('file', fileBlob, filename);
+
+          const fastApiRes = await fetch('http://127.0.0.1:8000/api/ocr/extract', {
+            method: 'POST',
+            body: ocrFormData,
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+
+          if (fastApiRes.ok) {
+            const data = await fastApiRes.json();
+            if (data && data.success) {
+              extractedText = (data.text || '').trim();
+              ocrConfidence = Math.round(data.confidence || 0);
+              isLowConfidence = Boolean(data.is_low_confidence);
+              ocrCompleted = true;
+            }
+          }
+        } catch (_fastApiErr) {
+          // Fall back to CLI bridge
         }
 
-        // 2. Tesseract OCR with Hindi + English combined language models
-        const ocrResult = await Tesseract.recognize(processedBuffer, 'hin+eng');
-        extractedText = ocrResult?.data?.text ? ocrResult.data.text.trim() : '';
-        ocrConfidence = Math.round(ocrResult?.data?.confidence || 0);
+        // Strategy 2: Fast CLI Bridge via local backend venv
+        if (!ocrCompleted) {
+          const { execFile } = await import('child_process');
+          const pyBin = path.join(process.cwd(), 'backend', 'venv', 'bin', 'python');
+          const scriptPath = path.join(process.cwd(), 'scripts', 'ocr_extract.py');
 
-        // Low confidence heuristic: score below 35 or less than 5 characters
-        if (ocrConfidence < 35 || extractedText.length < 5) {
-          isLowConfidence = true;
+          await new Promise<void>((resolve) => {
+            execFile(pyBin, [scriptPath, filePath], { timeout: 4000 }, (err, stdout) => {
+              if (!err && stdout) {
+                try {
+                  const match = stdout.match(/\{[\s\S]*\}/);
+                  if (match) {
+                    const data = JSON.parse(match[0]);
+                    extractedText = (data.text || '').trim();
+                    ocrConfidence = Math.round(data.confidence || 0);
+                    isLowConfidence = Boolean(data.is_low_confidence);
+                  }
+                } catch {}
+              }
+              resolve();
+            });
+          });
         }
       } catch (ocrErr: any) {
-        console.warn('Tesseract OCR error:', ocrErr?.message || ocrErr);
+        console.warn('OCR non-fatal warning:', ocrErr?.message || ocrErr);
         isLowConfidence = true;
       }
     }
@@ -117,4 +146,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

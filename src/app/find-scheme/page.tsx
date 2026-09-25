@@ -198,6 +198,9 @@ function FindSchemeContent() {
     });
   };
 
+  const totalSteps = purpose === 'EDUCATION' ? 11 : 10;
+  const disabilityStep = totalSteps;
+
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -206,13 +209,21 @@ function FindSchemeContent() {
     scrollToQuestionTop();
   }, [step]);
 
-  // Auto-load draft questionnaire state from localStorage on client mount (Fixes Con 6: mobile data loss on refresh)
+  // Auto-load draft questionnaire state from localStorage on client mount (Ensures fresh Question 1 on refresh when completed)
   useEffect(() => {
     try {
       const savedDraft = typeof window !== 'undefined' ? localStorage.getItem('sahayak_wizard_draft') : null;
       if (savedDraft) {
         const d = JSON.parse(savedDraft);
-        if (d.step && d.step > 1) setStep(d.step);
+        // Only resume if draft is in intermediate steps (step 2 to 9). If completed or at step 10+, reset to Question 1!
+        if (d.step && d.step > 1 && d.step < 10) {
+          setStep(d.step);
+        } else {
+          setStep(1);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sahayak_wizard_draft');
+          }
+        }
         if (d.gender) setGender(d.gender);
         if (d.age) { setAge(d.age); setAgeInputStr(String(d.age)); }
         if (d.employmentStatus) setEmploymentStatus(d.employmentStatus);
@@ -231,10 +242,15 @@ function FindSchemeContent() {
     }
   }, []);
 
-  // Auto-save draft on questionnaire changes
+  // Auto-save draft on questionnaire changes while questionnaire is in progress
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
+        // If completed/showing results or at the final step, clear draft so refresh always returns cleanly to Question 1
+        if (recommendationResult || step >= totalSteps) {
+          localStorage.removeItem('sahayak_wizard_draft');
+          return;
+        }
         const draft = {
           step,
           gender,
@@ -255,7 +271,7 @@ function FindSchemeContent() {
     } catch (e) {
       // ignore storage quota errors
     }
-  }, [step, gender, age, employmentStatus, state, areaType, purpose, projectCost, annualFamilyIncome, scCertificate, courseType, disabilityStatus, disabilityPercentage]);
+  }, [step, gender, age, employmentStatus, state, areaType, purpose, projectCost, annualFamilyIncome, scCertificate, courseType, disabilityStatus, disabilityPercentage, recommendationResult, totalSteps]);
 
   useEffect(() => {
     const p = searchParams.get('purpose');
@@ -322,9 +338,6 @@ function FindSchemeContent() {
     setAnnualFamilyIncome(val);
   };
 
-  const totalSteps = purpose === 'EDUCATION' ? 11 : 10;
-  const disabilityStep = totalSteps;
-
   const handleNext = () => {
     if (step === totalSteps) {
       handleSubmit();
@@ -357,6 +370,13 @@ function FindSchemeContent() {
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sahayak_wizard_draft');
+      }
+    } catch (e) {
+      // ignore
+    }
 
     const hasDisability = disabilityStatus === 'YES_WITH_CERT' || disabilityStatus === 'YES_NO_CERT';
     const computedPercentage = hasDisability

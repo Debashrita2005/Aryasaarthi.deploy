@@ -36,5 +36,7 @@ backend/venv/
 backend/__pycache__/
 *.pyc
 logs/
+*.log
+backend/data/*.log
 *.zip
 public/uploads/

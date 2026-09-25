@@ -1,7 +1,7 @@
 """
 AryaSaarthi — Ask Arya Chatbot Prompts & Response Templates
-Pure templated strings without LLM hallucination risk.
-Deterministic, judge-friendly, transparent.
+Pure templated strings without LLM hallucination or context distraction risk.
+Deterministic, judge-friendly, transparent, signal-to-noise optimized.
 """
 
 from typing import List, Dict, Any
@@ -94,39 +94,71 @@ LOCATION_QUICK_REPLIES = [
     "Rajasthan"
 ]
 
+def format_understood_summary(user_profile: Dict[str, Any]) -> str:
+    """
+    Produces a crisp summary of only the validated slot values used in matching.
+    Filters out 100% of extraneous, irrelevant user-provided details (No Distraction Rule).
+    """
+    items = []
+    if user_profile.get("sc_status"):
+        items.append("• **Category:** Scheduled Caste (SC) Verified")
+    if user_profile.get("gender"):
+        items.append(f"• **Gender:** {str(user_profile.get('gender')).title()}")
+    if user_profile.get("income") is not None:
+        items.append(f"• **Annual Family Income:** ₹{int(user_profile.get('income', 0)):,}")
+    purpose_str = user_profile.get("project_type") or user_profile.get("purpose")
+    if purpose_str:
+        items.append(f"• **Project Purpose:** {str(purpose_str).replace('_', ' ').title()}")
+    if user_profile.get("amount") is not None:
+        items.append(f"• **Loan Amount Required:** ₹{int(user_profile.get('amount', 0)):,}")
+    if user_profile.get("state"):
+        items.append(f"• **Location:** {user_profile.get('state')}")
+
+    return "\n".join(items)
+
 def format_recommendations(user_profile: Dict[str, Any], matched_schemes: List[Dict[str, Any]]) -> str:
-    """Formats matching schemes into a clean, transparent summary."""
+    """
+    Formats matching schemes with transparent reasoning trails and zero context distraction.
+    Structure:
+    1. What was understood (Validated slots only)
+    2. Matching Schemes & Deterministic Rule Engine Reasons
+    3. Actionable next steps
+    """
+    understood_block = format_understood_summary(user_profile)
+
     if not matched_schemes:
         return (
             "🔍 **No direct scheme matched all exact criteria.**\n\n"
-            f"• Purpose: {user_profile.get('project_type') or user_profile.get('purpose')}\n"
-            f"• Required Amount: ₹{user_profile.get('amount', 0):,}\n"
-            f"• Annual Income: ₹{user_profile.get('income', 0):,}\n\n"
-            "💡 **Recommendation:** Try requesting a lower amount within NSFDC statutory limits (e.g., ₹1,00,000 to ₹5,00,000) "
+            "📋 **Parameters Evaluated:**\n"
+            f"{understood_block}\n\n"
+            "💡 **Advisor Feedback:** Try requesting a lower amount within NSFDC statutory limits (e.g., ₹1,00,000 to ₹5,00,000) "
             "or explore our Skill Training programs.\n\n"
             "Would you like to restart or view channel partners?"
         )
 
     count = len(matched_schemes)
     lines = [
-        f"🎉 **Great news! Found {count} matching government scheme{'s' if count > 1 else ''} for you:**\n"
+        f"🎉 **Found {count} matching government scheme{'s' if count > 1 else ''} based on your verified details:**\n",
+        "📋 **What Was Understood & Evaluated:**",
+        understood_block,
+        "\n---",
+        "🏆 **Recommended Schemes:**"
     ]
 
     for i, s in enumerate(matched_schemes, 1):
         rate_str = f"{s.get('interest_rate_min', 0)}% – {s.get('interest_rate_max', 0)}% p.a."
         moratorium = s.get('moratorium_months', [0, 0])
-        mora_str = f"{moratorium[0]} to {moratorium[1]} months" if len(moratorium) == 2 and moratorium[1] > 0 else "N/A"
+        mora_str = f"{moratorium[0]} to {moratorium[1]} months" if len(moratorium) == 2 and moratorium[1] > 0 else f"{max(moratorium)} months"
         coverage = s.get('cost_coverage_pct', 90)
 
-        lines.append(f"### {i}. **{s.get('name')}** ({s.get('scheme_id')})")
-        lines.append(f"• **Interest Rate:** `{rate_str}` (concessional)")
-        lines.append(f"• **Max Loan Limit:** ₹{s.get('max_amount', 0):,}")
+        lines.append(f"\n### {i}. **{s.get('name')}** (`{s.get('scheme_id')}`)")
+        lines.append(f"• **Concessional Interest Rate:** `{rate_str}`")
+        lines.append(f"• **Statutory Loan Slab:** ₹{int(s.get('min_amount', 0)):,} – ₹{int(s.get('max_amount', 0)):,}")
         lines.append(f"• **NSFDC Coverage:** Up to {coverage}% of project cost")
-        lines.append(f"• **Moratorium (Repayment Holiday):** {mora_str}")
-        lines.append(f"• **Why it matched:** {s.get('match_reason', 'Satisfies income and category requirements.')}")
-        lines.append("")
+        lines.append(f"• **Repayment Holiday (Moratorium):** {mora_str}")
+        lines.append(f"• **💡 Why It Matched:** {s.get('match_reason', 'Satisfies statutory income and project eligibility requirements.')}")
 
-    lines.append("👇 **What would you like to do next?**")
+    lines.append("\n👇 **What would you like to do next?**")
     return "\n".join(lines)
 
 RECOMMENDATION_FOLLOWUP_QUICK_REPLIES = [

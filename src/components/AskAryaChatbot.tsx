@@ -28,12 +28,16 @@ import {
   ArrowLeft,
   ArrowRight,
   Paperclip,
+  Camera,
+  Image as ImageIcon,
+  Upload,
   CheckCheck,
   User,
   Calculator,
   FileText,
   AlertCircle,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/context";
@@ -101,7 +105,10 @@ export function AskAryaChatbot() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const attachMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Bhashini Voice Recording & TTS States
   const [isRecording, setIsRecording] = useState(false);
@@ -130,6 +137,57 @@ export function AskAryaChatbot() {
   };
 
   const transcriptAccumulatorRef = useRef<string>("");
+  const accumulatedTranscriptRef = useRef<string>("");
+  const isRecordingRef = useRef<boolean>(false);
+  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [voiceLang, setVoiceLang] = useState<string>(language === "hi" ? "hi-IN" : "en-IN");
+  const isSyncingRef = useRef<boolean>(false);
+
+  // Background Whisper sync for continuous live transcription during long recordings
+  const syncWhisperTranscript = async () => {
+    if (isSyncingRef.current || !isRecordingRef.current) return;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch (_e) {}
+    }
+    if (audioChunksRef.current.length === 0) return;
+    isSyncingRef.current = true;
+    try {
+      const currentBlob = new Blob([...audioChunksRef.current], {
+        type: mediaRecorderRef.current?.mimeType || "audio/webm",
+      });
+      const converted = await convertBlobTo16kHzWav(currentBlob);
+      if (converted.base64 && isRecordingRef.current) {
+        const targetLang = voiceLang.startsWith("hi") ? "hi" : (bhashiniConfig.bhashiniCode || "en");
+        const res = await fetch("/api/bhashini/asr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio: converted.base64,
+            language: targetLang,
+          }),
+        });
+        if (res.ok && isRecordingRef.current) {
+          const data = await res.json();
+          if (data && data.success && data.text && data.text.trim()) {
+            const whisperText = data.text.trim();
+            // If Whisper transcribed extra words that Web Speech missed or paused on, update live!
+            const currentAcc = (transcriptAccumulatorRef.current || "").trim();
+            if (whisperText.length > currentAcc.length || whisperText.split(/\s+/).length > currentAcc.split(/\s+/).length) {
+              transcriptAccumulatorRef.current = whisperText;
+              accumulatedTranscriptRef.current = whisperText;
+              setInput(whisperText);
+            }
+          }
+        }
+      }
+    } catch (_e) {
+      // Background sync is non-blocking
+    } finally {
+      isSyncingRef.current = false;
+    }
+  };
 
   // Start voice recording (Bhashini primary via MediaRecorder + Web Speech concurrent fallback)
   const startRecording = async () => {
@@ -138,7 +196,7 @@ export function AskAryaChatbot() {
     setUploadError(null);
     setVoiceStatus(null);
 
-    // 1. Request microphone permission with noise suppression, echo cancellation & 16kHz capture
+    // 1. Request microphone permission with noise suppression, echo cancellation
     let stream: MediaStream | null = null;
     try {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -149,8 +207,6 @@ export function AskAryaChatbot() {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 16000,
         },
       });
     } catch (err: any) {
@@ -160,9 +216,11 @@ export function AskAryaChatbot() {
       return;
     }
 
+    isRecordingRef.current = true;
     setIsRecording(true);
     setRecordingSeconds(0);
     setAudioLevel(0);
+    accumulatedTranscriptRef.current = "";
     transcriptAccumulatorRef.current = "";
     audioChunksRef.current = [];
 
@@ -171,6 +229,9 @@ export function AskAryaChatbot() {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioContextClass) {
         const audioCtx = new AudioContextClass();
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume().catch(() => {});
+        }
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
@@ -197,31 +258,32 @@ export function AskAryaChatbot() {
       console.warn("Audio visualizer init error:", e);
     }
 
-    // Live timer with 60-second limit and visible countdown
+    // Continuous timer counting up — also runs background Whisper sync every 3s to capture long speech
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => {
-        if (prev >= 60) {
-          stopRecording(false);
-          return 0;
+        const nextSec = prev + 1;
+        // Background live Whisper sync every 3 seconds for continuous speech
+        if (nextSec >= 3 && nextSec % 3 === 0 && isRecordingRef.current) {
+          syncWhisperTranscript();
         }
-        return prev + 1;
+        return nextSec;
       });
     }, 1000);
 
-    // 2. Initialize MediaRecorder for Bhashini ASR pipeline (Primary)
+    // 2. Initialize MediaRecorder for ASR pipeline (flushed every 1s for long inputs)
     try {
       const recorder = new MediaRecorder(stream);
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      recorder.start();
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
     } catch (err) {
       console.warn("MediaRecorder init error:", err);
     }
 
-    // 3. Initialize Web Speech Recognition concurrently for zero-latency local fallback
+    // 3. Initialize continuous Web Speech Recognition with automatic fresh instance recycling on pauses
     const SpeechRecognition =
       typeof window !== "undefined"
         ? (window as any).SpeechRecognition ||
@@ -229,41 +291,102 @@ export function AskAryaChatbot() {
         : null;
 
     if (SpeechRecognition) {
-      try {
-        const recog = new SpeechRecognition();
-        recog.lang = bhashiniConfig.locale;
-        recog.continuous = true;
-        recog.interimResults = true;
-        recog.maxAlternatives = 1;
+      const launchRecognitionInstance = () => {
+        if (!isRecordingRef.current) return;
 
-        recog.onresult = (event: any) => {
-          let fullTranscript = "";
-          for (let i = 0; i < event.results.length; i++) {
-            fullTranscript += event.results[i][0].transcript;
+        try {
+          const recog = new SpeechRecognition();
+          recog.lang = voiceLang || bhashiniConfig.locale;
+          recog.continuous = true;
+          recog.interimResults = true;
+
+          let lastInstanceText = "";
+
+          recog.onresult = (event: any) => {
+            let interim = "";
+            let currentFinal = "";
+            for (let i = 0; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                currentFinal += transcript + " ";
+              } else {
+                interim += transcript;
+              }
+            }
+
+            lastInstanceText = (currentFinal + " " + interim).trim();
+            const combined = [accumulatedTranscriptRef.current, lastInstanceText]
+              .filter(Boolean)
+              .join(" ")
+              .replace(/\s+/g, " ")
+              .trim();
+
+            if (combined) {
+              transcriptAccumulatorRef.current = combined;
+              setInput(combined);
+            }
+          };
+
+          recog.onerror = (e: any) => {
+            // Ignore non-fatal pause/aborted/network glitches during continuous speech
+            if (e?.error === "no-speech" || e?.error === "aborted" || e?.error === "network") {
+              return;
+            }
+            console.warn("Speech recognition notice:", e?.error || e);
+          };
+
+          recog.onend = () => {
+            // Commit any speech from this session into persistent accumulator
+            if (lastInstanceText) {
+              accumulatedTranscriptRef.current = [accumulatedTranscriptRef.current, lastInstanceText]
+                .filter(Boolean)
+                .join(" ")
+                .replace(/\s+/g, " ")
+                .trim();
+              lastInstanceText = "";
+            }
+
+            // In Chromium and Safari, continuous mode pauses after short speech.
+            // Wait 200ms for hardware release, then restart cleanly to continue recording extra speech!
+            if (isRecordingRef.current) {
+              if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+              restartTimerRef.current = setTimeout(() => {
+                if (isRecordingRef.current) {
+                  launchRecognitionInstance();
+                }
+              }, 200);
+            }
+          };
+
+          recog.start();
+          recognitionRef.current = recog;
+        } catch (err) {
+          console.warn("Speech recognition restart catch:", err);
+          if (isRecordingRef.current) {
+            if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+            restartTimerRef.current = setTimeout(() => {
+              if (isRecordingRef.current) {
+                launchRecognitionInstance();
+              }
+            }, 300);
           }
-          if (fullTranscript.trim()) {
-            transcriptAccumulatorRef.current = fullTranscript.trim();
-            setInput(fullTranscript.trim());
-          }
-        };
+        }
+      };
 
-        recog.onerror = (e: any) => {
-          console.warn("Web Speech recognition status:", e?.error || e);
-        };
-
-        recog.start();
-        recognitionRef.current = recog;
-      } catch (err) {
-        console.warn("Web Speech init error:", err);
-      }
+      launchRecognitionInstance();
     }
   };
 
-  // Stop recording and process audio via Bhashini ASR (with Web Speech fallback)
-  const stopRecording = async (cancel = false) => {
+  // Stop recording and process audio (user decides when to finish)
+  const stopRecording = async (cancel = false, autoSend = true) => {
+    isRecordingRef.current = false;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -275,11 +398,13 @@ export function AskAryaChatbot() {
     }
     analyserRef.current = null;
     setAudioLevel(0);
+    const duration = recordingSeconds;
     setRecordingSeconds(0);
     setIsRecording(false);
 
     if (recognitionRef.current) {
       try {
+        recognitionRef.current.onend = null; // Unhook onend to prevent re-launch
         recognitionRef.current.stop();
       } catch (e) {}
       recognitionRef.current = null;
@@ -288,6 +413,9 @@ export function AskAryaChatbot() {
     const recordedRecorder = mediaRecorderRef.current;
     if (recordedRecorder) {
       try {
+        if (recordedRecorder.state === "recording") {
+          recordedRecorder.requestData();
+        }
         recordedRecorder.stop();
         recordedRecorder.stream?.getTracks().forEach((t) => t.stop());
       } catch (e) {}
@@ -295,98 +423,97 @@ export function AskAryaChatbot() {
     }
 
     if (cancel) {
+      accumulatedTranscriptRef.current = "";
       transcriptAccumulatorRef.current = "";
       setInput("");
       setVoiceStatus(null);
       return;
     }
 
-    // Process audio via Bhashini ASR as primary path (resampled to 16kHz mono WAV)
-    setVoiceStatus("Transcribing speech via Bhashini...");
-    setTimeout(async () => {
-      if (audioChunksRef.current.length > 0) {
+    // Wait 80ms for final audio recorder chunks to flush into audioChunksRef
+    await new Promise((r) => setTimeout(r, 80));
+
+    const capturedText = (transcriptAccumulatorRef.current || input || "").trim();
+
+    // If audio buffer exists and user spoke for >= 3 seconds or capturedText is empty:
+    // ALWAYS run full-audio Whisper transcription so the complete speech from start to finish is preserved!
+    if (audioChunksRef.current.length > 0 && (duration >= 3 || !capturedText)) {
+      setVoiceStatus(language === "hi" ? "पूरी आवाज़ ट्रांसक्राइब हो रही है (Local Whisper)..." : "Transcribing complete audio (Local Whisper)...");
+      try {
+        const rawBlob = new Blob(audioChunksRef.current, {
+          type: recordedRecorder?.mimeType || "audio/webm",
+        });
+
+        let base64Audio = "";
         try {
-          const rawBlob = new Blob(audioChunksRef.current, {
-            type: recordedRecorder?.mimeType || "audio/webm",
-          });
-
-          let base64Audio = "";
-          try {
-            const converted = await convertBlobTo16kHzWav(rawBlob);
-            base64Audio = converted.base64;
-          } catch (convErr) {
-            console.warn("WAV conversion error, falling back to raw base64:", convErr);
-            const arrayBuffer = await rawBlob.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = "";
-            for (let i = 0; i < bytes.byteLength; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            base64Audio = btoa(binary);
+          const converted = await convertBlobTo16kHzWav(rawBlob);
+          base64Audio = converted.base64;
+        } catch (convErr) {
+          console.warn("WAV conversion error, falling back to raw base64:", convErr);
+          const arrayBuffer = await rawBlob.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = "";
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
           }
+          base64Audio = btoa(binary);
+        }
 
-          if (base64Audio) {
-            let data: any = null;
-            let retryCount = 0;
-            while (retryCount < 2 && !data) {
-              try {
-                const res = await fetch("/api/bhashini/asr", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    audio: base64Audio,
-                    language: bhashiniConfig.bhashiniCode,
-                  }),
-                });
-                if (res.ok) {
-                  data = await res.json();
-                } else {
-                  retryCount++;
-                  if (retryCount < 2) await new Promise((r) => setTimeout(r, 400));
-                }
-              } catch (err) {
-                retryCount++;
-                if (retryCount < 2) await new Promise((r) => setTimeout(r, 400));
-              }
-            }
+        if (base64Audio) {
+          const targetLang = voiceLang.startsWith("hi") ? "hi" : (bhashiniConfig.bhashiniCode || "en");
+          const res = await fetch("/api/bhashini/asr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              audio: base64Audio,
+              language: targetLang,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const whisperText = (data && data.success && data.text ? data.text.trim() : "");
+            // Choose whichever transcript is more complete
+            const bestText = whisperText.length >= capturedText.length ? whisperText : capturedText;
 
-            if (data && data.success && data.text && data.text.trim()) {
+            if (bestText) {
               setVoiceStatus(null);
-              sendMessage(data.text.trim());
-              transcriptAccumulatorRef.current = "";
-              setInput("");
+              if (autoSend) {
+                sendMessage(bestText);
+                accumulatedTranscriptRef.current = "";
+                transcriptAccumulatorRef.current = "";
+                setInput("");
+              } else {
+                setInput(bestText);
+              }
               return;
             }
           }
-
-          // Fallback to Web Speech API transcript if Bhashini returned empty or was unavailable
-          const fallbackText = (transcriptAccumulatorRef.current || input || "").trim();
-          if (fallbackText) {
-            setVoiceStatus(null);
-            sendMessage(fallbackText);
-            transcriptAccumulatorRef.current = "";
-            setInput("");
-          } else {
-            setVoiceStatus(null);
-            setVoiceError("No speech detected. Please speak closer to your microphone or type your message.");
-          }
-          return;
-        } catch (e) {
-          console.warn("Audio blob processing error:", e);
         }
+      } catch (e) {
+        console.warn("Audio processing error:", e);
       }
+    }
 
-      // Check if Web Speech API captured text
-      const captured = (transcriptAccumulatorRef.current || input || "").trim();
+    // Quick short recording (< 3s) where Web Speech captured transcript
+    if (capturedText) {
       setVoiceStatus(null);
-      if (captured) {
-        sendMessage(captured);
+      if (autoSend) {
+        sendMessage(capturedText);
+        accumulatedTranscriptRef.current = "";
         transcriptAccumulatorRef.current = "";
         setInput("");
       } else {
-        setVoiceError("No speech detected. Please type your message.");
+        setInput(capturedText);
       }
-    }, 300);
+      return;
+    }
+
+    setVoiceStatus(null);
+    setVoiceError(
+      language === "hi"
+        ? "कोई आवाज़ नहीं सुनी गई। कृपया माइक के पास बोलें या टाइप करें।"
+        : "No speech detected. Please speak closer to your microphone or type your message."
+    );
   };
 
   // Text-To-Speech (Arya speaking in user's selected regional language via Bhashini or Web Speech)
@@ -458,12 +585,77 @@ export function AskAryaChatbot() {
     }
   };
 
-  // Handle File Upload
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadError(null);
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Compresses image on client canvas before upload to ensure instant, high-efficiency transmission
+  const compressImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml" || file.type === "image/gif") {
+      return file;
+    }
+    // Files under 1.5MB transmit in milliseconds without needing canvas re-compression
+    if (file.size <= 1.5 * 1024 * 1024) {
+      return file;
+    }
 
+    return new Promise((resolve) => {
+      // 1.2s safety timeout: guarantees upload proceeds even if canvas decoding lags
+      const safetyTimer = setTimeout(() => resolve(file), 1200);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new (window as any).Image();
+        img.onload = () => {
+          clearTimeout(safetyTimer);
+          let { width, height } = img;
+          const maxDim = 1280;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressed);
+            },
+            "image/jpeg",
+            0.82
+          );
+        };
+        img.onerror = () => {
+          clearTimeout(safetyTimer);
+          resolve(file);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => {
+        clearTimeout(safetyTimer);
+        resolve(file);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Upload single file object (from camera or gallery)
+  const uploadFileObject = async (rawFile: File) => {
     const allowed = [
       "image/jpeg",
       "image/jpg",
@@ -474,38 +666,60 @@ export function AskAryaChatbot() {
       "application/pdf",
     ];
 
-    setUploading(true);
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      if (!allowed.includes(f.type)) {
-        setUploadError(`Unsupported file format (${f.name}). Please upload an image (PNG, JPG, WEBP) or PDF document.`);
-        continue;
-      }
-      if (f.size > 10 * 1024 * 1024) {
-        setUploadError(`File ${f.name} exceeds the 10MB size limit.`);
-        continue;
-      }
-
-      const formData = new FormData();
-      formData.append("file", f);
-
-      try {
-        const res = await fetch("/api/chatbot/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        if (data && data.success && data.file) {
-          setAttachments((prev) => [...prev, data.file]);
-        } else {
-          setUploadError(data.error || `Failed to upload ${f.name}`);
-        }
-      } catch (err: any) {
-        setUploadError(`Upload error for ${f.name}: ${err.message}`);
-      }
+    if (!allowed.includes(rawFile.type) && !rawFile.type.startsWith("image/")) {
+      setUploadError(`Unsupported format (${rawFile.name}). Please upload an image (PNG, JPG, WEBP) or PDF.`);
+      return;
     }
-    setUploading(false);
+
+    if (rawFile.size > 15 * 1024 * 1024) {
+      setUploadError(`File ${rawFile.name} exceeds the 15MB limit.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const processedFile = await compressImage(rawFile);
+      const formData = new FormData();
+      formData.append("file", processedFile);
+
+      const res = await fetch("/api/chatbot/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data && data.success && data.file) {
+        setAttachments((prev) => [...prev, data.file]);
+      } else {
+        setUploadError(data.error || `Failed to upload ${rawFile.name}`);
+      }
+    } catch (err: any) {
+      setUploadError(`Upload error for ${rawFile.name}: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle Gallery/File Picker Selection
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      await uploadFileObject(files[i]);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Handle Live Camera Capture Selection
+  const handleCameraSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await uploadFileObject(file);
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   const removeAttachment = (index: number) => {
@@ -530,6 +744,21 @@ export function AskAryaChatbot() {
     };
   }, []);
 
+  // Close attachment dropdown menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+    if (showAttachMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showAttachMenu]);
+
   // Send initial greeting on open if empty
   useEffect(() => {
     if (isOpen && messages.length === 0 && sessionId) {
@@ -537,10 +766,39 @@ export function AskAryaChatbot() {
     }
   }, [isOpen, sessionId]);
 
-  // Scroll to bottom
+  // Messages container and latest message refs for user-friendly starting-point scroll
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to starting part of Arya's replies (or bottom for user messages)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, attachments]);
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+
+    if (lastMsg?.sender === "assistant") {
+      // Keep view at the starting top part of Arya's reply so user can read smoothly from the beginning
+      if (lastMessageRef.current && messagesContainerRef.current) {
+        const container = messagesContainerRef.current;
+        const target = lastMessageRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const scrollOffset = targetRect.top - containerRect.top + container.scrollTop;
+        container.scrollTo({
+          top: Math.max(0, scrollOffset - 8),
+          behavior: "smooth",
+        });
+      }
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // Keep typing indicator visible when loading
+  useEffect(() => {
+    if (loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [loading]);
 
   const sendMessage = async (textToSend?: string, isGreeting = false, overrideSid?: string) => {
     const text = (textToSend || input).trim();
@@ -850,10 +1108,11 @@ export function AskAryaChatbot() {
             })()}
 
             {/* Messages Container */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-white text-sm">
-              {messages.map((msg) => (
+            <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-white text-sm">
+              {messages.map((msg, idx) => (
                 <div
                   key={msg.id}
+                  ref={idx === messages.length - 1 ? lastMessageRef : null}
                   className={`flex gap-2 ${msg.sender === "user" ? "flex-row-reverse" : "flex-row"}`}
                 >
                   {/* DP for Assistant */}
@@ -1221,7 +1480,7 @@ export function AskAryaChatbot() {
             {/* Footer Input Bar */}
             <div className="p-2.5 sm:p-3 bg-white border-t border-slate-200 shrink-0 w-full">
               {/* Attachment Preview Chips */}
-              {attachments.length > 0 && (
+              {(attachments.length > 0 || uploading) && (
                 <div className="flex items-center gap-2 overflow-x-auto py-1 px-1 mb-2 no-scrollbar">
                   {attachments.map((att, idx) => (
                     <div
@@ -1254,9 +1513,9 @@ export function AskAryaChatbot() {
                     </div>
                   ))}
                   {uploading && (
-                    <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-bold px-2 py-1">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Reading Document (OCR)...</span>
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1 rounded-xl text-xs font-bold animate-pulse shrink-0 shadow-2xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                      <span>{language === "hi" ? "दस्तावेज़ स्कैन हो रहा है..." : "Scanning & uploading image..."}</span>
                     </div>
                   )}
                 </div>
@@ -1303,70 +1562,131 @@ export function AskAryaChatbot() {
               )}
 
               {isRecording ? (
-                /* Active Voice Recording Mode with Live Waveform */
+                /* Active Voice Recording Mode with Live Waveform & Smooth Multi-Sentence Transcript */
                 <div
                   id="ask-arya-recording-bar"
-                  className="w-full flex items-center justify-between gap-2 bg-rose-50/95 border-2 border-rose-400 rounded-2xl px-3 py-2 text-rose-800 shadow-sm"
+                  className="w-full flex flex-col gap-2 bg-gradient-to-r from-rose-50 via-pink-50 to-rose-50 border-2 border-rose-400 rounded-2xl p-2.5 sm:p-3 text-rose-950 shadow-md animate-in fade-in duration-200"
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="text-xs font-black text-rose-900 truncate">
-                          {input ? `"${input}"` : `Listening (${formatSeconds(recordingSeconds)} / 01:00)...`}
-                        </div>
-                        {/* Live Sound Level Waveform Indicator */}
-                        <div className="flex items-center gap-0.5 h-3.5 px-1 bg-rose-200/70 rounded-md shrink-0">
-                          {[0.4, 0.8, 1.0, 0.7, 0.3].map((mul, bIdx) => {
-                            const h = Math.max(20, Math.min(100, Math.round(audioLevel * mul * 1.5)));
-                            return (
-                              <div
-                                key={bIdx}
-                                className="w-0.75 bg-rose-600 rounded-full transition-all duration-75"
-                                style={{ height: `${h}%` }}
-                              />
-                            );
-                          })}
-                        </div>
+                  <div className="flex items-center justify-between gap-2 border-b border-rose-200/80 pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex h-3.5 w-3.5 items-center justify-center">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
                       </div>
-                      <span className="text-[10px] text-rose-700 font-semibold truncate">
-                        {bhashiniConfig.name} ({bhashiniConfig.locale}) • Speak now (max 60s)
+                      <span className="text-[11px] font-black tracking-wide text-rose-900 uppercase">
+                        {language === "hi" ? "आवाज़ रिकॉर्डिंग चालू" : "Recording Live"}
                       </span>
+                      <span className="text-[11px] font-mono font-bold text-rose-800 bg-rose-200/80 px-2 py-0.5 rounded-full shadow-2xs">
+                        {formatSeconds(recordingSeconds)}
+                      </span>
+
+                      {/* Language Switcher for Voice (English / Hindi) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextLang = voiceLang === "hi-IN" ? "en-IN" : "hi-IN";
+                          setVoiceLang(nextLang);
+                          if (recognitionRef.current) {
+                            try {
+                              recognitionRef.current.lang = nextLang;
+                            } catch {}
+                          }
+                        }}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/90 border border-rose-300 text-rose-800 hover:bg-rose-100 transition shadow-2xs cursor-pointer ml-1"
+                        title="Switch speech language between English & Hindi"
+                      >
+                        {voiceLang === "hi-IN" ? "🇮🇳 हिंदी" : "🌐 English"}
+                      </button>
+                    </div>
+
+                    {/* Waveform Sound Level Indicator */}
+                    <div className="flex items-center gap-0.5 h-4 px-1.5 bg-rose-200/60 rounded-lg">
+                      {[0.3, 0.6, 0.9, 1.0, 0.8, 0.5, 0.3].map((mul, bIdx) => {
+                        const h = Math.max(20, Math.min(100, Math.round(audioLevel * mul * 1.6)));
+                        return (
+                          <div
+                            key={bIdx}
+                            className="w-1 bg-rose-600 rounded-full transition-all duration-75"
+                            style={{ height: `${h}%` }}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {/* Cancel Recording Button */}
-                    <button
-                      type="button"
-                      onClick={() => stopRecording(true)}
-                      id="ask-arya-cancel-voice-btn"
-                      className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer"
-                      title="Cancel voice recording"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {/* Live Streaming Speech Transcript (Expands smoothly for Long Multi-Sentence Inputs) */}
+                  <div className="max-h-24 min-h-[36px] overflow-y-auto no-scrollbar p-2 text-xs font-semibold text-rose-950 leading-relaxed break-words bg-white/80 rounded-xl border border-rose-200/80 shadow-2xs">
+                    {input ? (
+                      input
+                    ) : (
+                      <span className="text-rose-400 font-normal italic">
+                        {language === "hi"
+                          ? `${bhashiniConfig.name} में बोलें... आप बिना किसी समय सीमा के बोल सकते हैं`
+                          : `Speak in ${bhashiniConfig.name}... speak as long as you need`}
+                      </span>
+                    )}
+                  </div>
 
-                    {/* Stop & Send Button */}
-                    <button
-                      type="button"
-                      onClick={() => stopRecording(false)}
-                      id="ask-arya-stop-voice-btn"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
-                      title="Done speaking, send message"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Done</span>
-                    </button>
+                  {/* User Control Action Buttons */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <span className="text-[10px] text-rose-700 font-medium truncate">
+                      {language === "hi"
+                        ? "बोलना पूरा होने पर 'पूर्ण' या 'एडिट' दबाएं"
+                        : "Tap 'Done' to send or 'Edit' to review"}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Cancel Recording Button */}
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(true)}
+                        id="ask-arya-cancel-voice-btn"
+                        className="px-2 py-1 text-xs font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-100 rounded-xl transition cursor-pointer"
+                        title={language === "hi" ? "रद्द करें" : "Cancel"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Review / Keep Text in Input Box */}
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(false, false)}
+                        id="ask-arya-review-voice-btn"
+                        className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold rounded-xl shadow-2xs transition active:scale-95 cursor-pointer"
+                        title={language === "hi" ? "माइक बंद करें और टेक्स्ट एडिट करें" : "Stop mic & edit text"}
+                      >
+                        <Pencil className="w-3 h-3 text-rose-600" />
+                        <span>{language === "hi" ? "एडिट करें" : "Edit"}</span>
+                      </button>
+
+                      {/* Done & Send Button */}
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(false, true)}
+                        id="ask-arya-stop-voice-btn"
+                        className="flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+                        title={language === "hi" ? "पूर्ण और भेजें" : "Done & Send message"}
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>{language === "hi" ? "पूर्ण" : "Done"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                /* Normal Text & Attachment Input Mode */
-                <div className="w-full flex items-center gap-2">
-                  {/* Hidden File Input */}
+                /* Normal Text, Camera & Attachment Input Mode */
+                <div className="w-full flex items-center gap-1.5 sm:gap-2">
+                  {/* Hidden Camera Input */}
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleCameraSelect}
+                  />
+
+                  {/* Hidden File Input (Gallery / Documents) */}
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -1376,16 +1696,83 @@ export function AskAryaChatbot() {
                     onChange={handleFileSelect}
                   />
 
-                  {/* Paperclip Button */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={loading || uploading}
-                    className="p-2 text-slate-500 hover:text-emerald-700 transition bg-slate-50 hover:bg-emerald-50 rounded-2xl shrink-0 border border-slate-200 cursor-pointer shadow-2xs active:scale-95"
-                    title="Attach Image or PDF document"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </button>
+
+                  {/* Attachment/Link Button with Both Options Popover */}
+                  <div className="relative" ref={attachMenuRef}>
+                    <button
+                      type="button"
+                      id="ask-arya-upload-btn"
+                      onClick={() => setShowAttachMenu((prev) => !prev)}
+                      disabled={loading || uploading}
+                      className={`p-2 transition rounded-2xl shrink-0 border cursor-pointer shadow-2xs active:scale-95 disabled:opacity-40 ${
+                        showAttachMenu
+                          ? "bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-200"
+                          : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 bg-slate-50 border-slate-200"
+                      }`}
+                      title={language === "hi" ? "फोटो या दस्तावेज जोड़ें" : "Attach Image or Document"}
+                      aria-expanded={showAttachMenu}
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+
+                    {/* Popover Action Menu */}
+                    {showAttachMenu && (
+                      <div
+                        id="ask-arya-attach-popover"
+                        className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-2xl shadow-xl border border-emerald-100 p-1.5 z-50 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                      >
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-0.5">
+                          {language === "hi" ? "दस्तावेज़ / फ़ोटो चुनें" : "Attach Document / Image"}
+                        </div>
+
+                        {/* Option 1: Camera */}
+                        <button
+                          type="button"
+                          id="ask-arya-menu-camera-btn"
+                          onClick={() => {
+                            setShowAttachMenu(false);
+                            cameraInputRef.current?.click();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 transition group cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition">
+                            <Camera className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-bold leading-tight">
+                              {language === "hi" ? "कैमरा (फोटो खींचें)" : "Take Photo"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 leading-tight">
+                              {language === "hi" ? "डिवाइस कैमरा का उपयोग करें" : "Use device camera"}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Option 2: Upload Image/Files */}
+                        <button
+                          type="button"
+                          id="ask-arya-menu-upload-btn"
+                          onClick={() => {
+                            setShowAttachMenu(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-900 transition group cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-teal-100/80 text-teal-700 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-bold leading-tight">
+                              {language === "hi" ? "गैलरी / फ़ाइल से चुनें" : "Upload Image / File"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 leading-tight">
+                              {language === "hi" ? "PNG, JPG, WEBP, PDF" : "PNG, JPG, WEBP, PDF"}
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <form
                     onSubmit={(e) => {
@@ -1399,7 +1786,11 @@ export function AskAryaChatbot() {
                       id="ask-arya-input"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Type, attach document, or click mic to speak..."
+                      placeholder={
+                        language === "hi"
+                          ? "संदेश लिखें, दस्तावेज़ जोड़ें या बोलें..."
+                          : "Type, take photo, attach, or click mic..."
+                      }
                       disabled={loading}
                       className="flex-1 bg-transparent text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none py-2 min-w-0"
                     />
@@ -1409,7 +1800,7 @@ export function AskAryaChatbot() {
                         type="submit"
                         disabled={loading || uploading}
                         id="ask-arya-submit"
-                        className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition shrink-0 shadow-xs cursor-pointer active:scale-95"
+                        className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition shrink-0 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
                         title="Send message"
                       >
                         <Send className="w-3.5 h-3.5" />
@@ -1418,9 +1809,9 @@ export function AskAryaChatbot() {
                       <button
                         type="button"
                         onClick={startRecording}
-                        disabled={loading}
+                        disabled={loading || uploading}
                         id="ask-arya-voice-btn"
-                        className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 flex items-center justify-center transition shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                        className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 flex items-center justify-center transition shrink-0 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
                         title="Click to speak (Voice input via Bhashini)"
                       >
                         <Mic className="w-4 h-4" />

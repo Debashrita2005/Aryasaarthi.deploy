@@ -559,6 +559,43 @@ class TestAskAryaChatbot(unittest.TestCase):
         self.assertIn("apologize for sounding repetitive", res_frust["reply"])
         self.assertIn("Mahila Samriddhi Yojana", res_frust["reply"])
 
+    def test_24_rule_engine_determinism(self):
+        """Test 24: Rule engine must produce 100% byte-identical output for identical input every time"""
+        import json
+        profile = {
+            "income": 120000.0,
+            "amount": 80000.0,
+            "project_type": "tailoring",
+            "purpose": "self_employment",
+            "gender": "FEMALE",
+            "sc_status": "YES",
+            "is_pwd": False
+        }
+        res_first = recommend_schemes(profile, MOCK_SCHEMES)
+        json_first = json.dumps(res_first, sort_keys=True)
+
+        for _ in range(50):
+            res_repeat = recommend_schemes(profile, MOCK_SCHEMES)
+            json_repeat = json.dumps(res_repeat, sort_keys=True)
+            self.assertEqual(json_first, json_repeat, "Rule engine evaluation is not byte-identical across runs!")
+
+    def test_25_ollama_fallback_on_failure(self):
+        """Test 25: When Ollama LLM is unavailable or fails, fallback NLU chain cleanly extracts slots"""
+        from chatbot.llm_client import OllamaLLMClient
+        # Mock client that always returns None (failed / offline)
+        broken_client = OllamaLLMClient(base_url="http://127.0.0.1:99999", timeout=0.1)
+        res, source = broken_client.extract_slots("I need a tailoring shop loan of 50000 and my income is 1.5 lakh")
+        self.assertIsNone(res)
+        self.assertEqual(source, "failed")
+
+        # In dialogue manager, fallback NLU automatically processes it
+        sess_id = "test_llm_fallback_sess"
+        result = self.dm.process_message(sess_id, "I need 50000 for tailoring, my income is 150000, SC female")
+        session = self.dm.get_session(sess_id)
+        self.assertEqual(session["slots"]["amount"], 50000.0)
+        self.assertEqual(session["slots"]["income"], 150000.0)
+        self.assertEqual(session["slots"]["gender"], "FEMALE")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

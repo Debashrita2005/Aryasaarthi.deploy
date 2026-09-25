@@ -132,7 +132,12 @@ def normalize_indic_text(text: str) -> str:
         (SAFE_BND_START + r'(আড়াই|আড়াই)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 2.5 lakh '),
         (SAFE_BND_START + r'(এক|১)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 1 lakh '),
         (SAFE_BND_START + r'(দুই|২)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 2 lakh '),
+        (SAFE_BND_START + r'(তিন|৩)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 3 lakh '),
+        (SAFE_BND_START + r'(চার|৪)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 4 lakh '),
+        (SAFE_BND_START + r'(পাঁচ|৫)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 5 lakh '),
+        (SAFE_BND_START + r'(দশ|১০)' + r'\s*(লাখ|লাখস)' + SAFE_BND_END, ' 10 lakh '),
         (SAFE_BND_START + r'(পঞ্চাশ\s*হাজার|৫০\s*হাজার)' + SAFE_BND_END, ' 50000 '),
+        (SAFE_BND_START + r'(এক\s*হাজার|১\s*হাজার)' + SAFE_BND_END, ' 1000 '),
         # Tamil
         (SAFE_BND_START + r'(ஒன்றரை|1\.5)' + r'\s*(லட்சம்|இலட்சம்)' + SAFE_BND_END, ' 1.5 lakh '),
         (SAFE_BND_START + r'(இரண்டரை|2\.5)' + r'\s*(லட்சம்|இலட்சம்)' + SAFE_BND_END, ' 2.5 lakh '),
@@ -442,7 +447,7 @@ def extract_purpose_and_project_type_regex(text: str) -> tuple[Optional[str], Op
         SAFE_BND_START +
         r'(tailor|tailoring|boutique|stitching|garment|cloth|dress|sewing machine|apparel|'
         r'सिलाई|शिलाई|दर्जी|सिलाई मशीन|शिलाई मशीन|बुटीक|कपड़े|सिलाई केंद्र|शिलाई केंद्र|शिलाई काम|'
-        r'দর্জি|দর্জি দোকান|দর্জি কাজ|বুটিঙ্ক|সেলাই মেশিন|'
+        r'দর্জি|দর্জি দোকান|দর্জি কাজ|সেলাই|সেলাই কাজ|বুটিক|বুটিঙ্ক|সেলাই মেশিন|সেলাই কেন্দ্র|'
         r'தையல்|தையல் மெஷின்|தையல் தொழில்|தையல் கடை|பூட்டிக்|'
         r'టైలరింగ్|టైలరింగ్ షాపు|కుట్టు మిషన్|బోటిక్|'
         r'ಟೈಲರಿಂಗ್|ಹೊಲಿಗೆ|ಹೊಲಿಗೆ ಯಂತ್ರ|ಬೊಟಿಕ್|'
@@ -686,7 +691,7 @@ def extract_slots(text: str, current_slots: Optional[Dict[str, Any]] = None) -> 
     3. SimilarityMatcher for project_type if still unresolved
     """
     slots = dict(current_slots or {})
-    clean_text = text.strip()
+    clean_text = normalize_indic_text(text.strip())
 
     # 1. SC Status
     if slots.get("sc_status") is None:

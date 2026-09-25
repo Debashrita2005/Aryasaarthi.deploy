@@ -24,6 +24,7 @@ except ImportError:
     settings = DummySettings()
 
 from .nlu import extract_slots, parse_indian_amount
+from .llm_client import llm_client
 from .rule_engine import recommend_schemes, compute_no_match_explanation
 from .similarity_matcher import is_sentence_transformer_failed, is_sentence_transformer_loaded
 from .faq_knowledge import check_faq_or_conversation
@@ -121,6 +122,21 @@ class DialogueManager:
             self.schemes = schemes_loader()
         else:
             self.schemes = load_schemes_from_store()
+
+    def _log_low_confidence(self, text: str, slot: str, conf: float, extracted_val: Any) -> None:
+        """Logs ambiguous extractions to data/low_confidence_extractions.log for prompt tuning."""
+        log_file = os.path.join(DATA_DIR, "low_confidence_extractions.log")
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "timestamp": time.time(),
+                    "text": text,
+                    "slot": slot,
+                    "confidence": conf,
+                    "extracted_value": extracted_val
+                }) + "\n")
+        except Exception as e:
+            logger.warning("Could not log low confidence extraction: %s", e)
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         return SESSIONS.get(session_id)
@@ -231,21 +247,11 @@ class DialogueManager:
             expired_prefix = "⏳ *Your previous session expired after 15 minutes of inactivity. Let's start fresh!*\n\n"
 
         # -------------------------------------------------------------
-        # 1. Explicit English-Only Guard (Detects non-Latin Unicode input)
+        # 1. Pre-normalize any Indic digits / text if present
         # -------------------------------------------------------------
-        if is_non_latin_script(text_clean):
-            reply_msg = (
-                "⚠️ **Language Notice:** AskArya currently supports English input. "
-                "Please type your query in English (for example: *\"I want a dairy loan of ₹1,00,000\"* or *\"tailoring shop ₹50,000\"*)."
-            )
-            LAST_RESPONSE_LATENCY_MS = round((time.time() - start_time) * 1000, 2)
-            return {
-                "session_id": session_id,
-                "reply": reply_msg,
-                "quick_replies": ["Start in English", "Dairy Loan ₹1 Lakh", "Tailoring Shop ₹50,000", "Restart"],
-                "matched_schemes": session["matched_schemes"],
-                "slots": slots
-            }
+        from .nlu import normalize_indic_text
+        text_clean = normalize_indic_text(text_clean)
+        text_lower = text_clean.lower()
 
         # -------------------------------------------------------------
         # 2. Check for explicit user reset/restart
@@ -376,9 +382,57 @@ class DialogueManager:
         faq_match = check_faq_or_conversation(text_clean)
 
         # -------------------------------------------------------------
-        # 7. Execute NLU Pipeline (Extracts slots with Conflict Detection)
+        # 7. Execute NLU Pipeline (LLM First -> Fallback NLU Chain -> Confidence Gating -> Conflict Detection)
         # -------------------------------------------------------------
-        extracted = extract_slots(text_clean, slots)
+        extracted: Dict[str, Any] = {}
+        llm_conf: Dict[str, float] = {}
+        llm_slots, source = llm_client.extract_slots(text_clean, slots, lang=lang)
+        if llm_slots and "extracted_slots" in llm_slots:
+            llm_ext = llm_slots.get("extracted_slots", {})
+            llm_conf = llm_slots.get("confidence", {})
+
+            if llm_ext.get("income") is not None:
+                try:
+                    extracted["income"] = float(llm_ext["income"])
+                except (ValueError, TypeError):
+                    pass
+            if llm_ext.get("amount") is not None:
+                try:
+                    extracted["amount"] = float(llm_ext["amount"])
+                except (ValueError, TypeError):
+                    pass
+            if llm_ext.get("category_confirmed") is True:
+                extracted["sc_status"] = "SC_CONFIRMED"
+            elif llm_ext.get("category_confirmed") is False:
+                extracted["sc_status"] = "NON_SC"
+            if llm_ext.get("purpose"):
+                extracted["purpose"] = str(llm_ext["purpose"]).upper()
+                extracted["project_type"] = str(llm_ext["purpose"]).lower().replace(" ", "_")
+            if llm_ext.get("location"):
+                extracted["state"] = str(llm_ext["location"])
+
+            # Check for low-confidence purpose extraction (< 0.60)
+            if "purpose" in extracted and llm_conf.get("purpose", 1.0) < 0.60:
+                self._log_low_confidence(text_clean, "purpose", llm_conf.get("purpose", 0.0), extracted["purpose"])
+                # Request clarification instead of guessing
+                clarify_msg = (
+                    "Could you tell me more specifically what you need the loan for — "
+                    "business, education, agriculture/dairy, or commercial transport?"
+                )
+                LAST_RESPONSE_LATENCY_MS = round((time.time() - start_time) * 1000, 2)
+                return {
+                    "session_id": session_id,
+                    "reply": clarify_msg,
+                    "quick_replies": ["Small Business / Retail", "Higher Education Loan", "Dairy / Livestock", "Electric Auto / Transport"],
+                    "matched_schemes": session["matched_schemes"],
+                    "slots": slots
+                }
+
+        # Fallback NLU chain (regex -> spaCy -> sentence-transformers) for missing fields or when LLM is unavailable
+        fallback_ext = extract_slots(text_clean, slots)
+        for k, v in fallback_ext.items():
+            if k not in extracted or extracted[k] is None:
+                extracted[k] = v
 
         # Conflict Detection: If a slot (income/amount) is restated with a different value
         for numeric_slot in ("income", "amount"):

@@ -1,0 +1,163 @@
+[
+  {
+    "query": "Hello Arya, good afternoon!",
+    "expected_intent": "greeting",
+    "entities": {}
+  },
+  {
+    "query": "Thank you for all the help, see you soon!",
+    "expected_intent": "goodbye",
+    "entities": {}
+  },
+  {
+    "query": "I am new here, can you please explain how to find schemes?",
+    "expected_intent": "help",
+    "entities": {}
+  },
+  {
+    "query": "I am a farmer from West Bengal. I have 2 acres of land. What schemes can I get?",
+    "expected_intent": "scheme_search",
+    "entities": {
+      "occupation": "farmer",
+      "state": "West Bengal",
+      "land_area": 2.0,
+      "land_unit": "acre"
+    }
+  },
+  {
+    "query": "Can a marginal farmer with 1.5 acres in Bihar apply for this scheme?",
+    "expected_intent": "scheme_eligibility",
+    "entities": {
+      "occupation": "marginal farmer",
+      "land_area": 1.5,
+      "land_unit": "acre",
+      "state": "Bihar"
+    }
+  },
+  {
+    "query": "How much financial assistance does a farmer receive in PM-KISAN every year?",
+    "expected_intent": "scheme_benefits",
+    "entities": {}
+  },
+  {
+    "query": "What are the required documents for applying for a Kisan Credit Card loan?",
+    "expected_intent": "scheme_documents",
+    "entities": {}
+  },
+  {
+    "query": "Where and how do I submit my application for Krishak Bandhu in West Bengal?",
+    "expected_intent": "scheme_application",
+    "entities": {
+      "state": "West Bengal"
+    }
+  },
+  {
+    "query": "Why has my PM-KISAN installment not been credited to my bank account?",
+    "expected_intent": "scheme_status",
+    "entities": {}
+  },
+  {
+    "query": "Is there any government subsidy on buying a mini tractor or rotavator?",
+    "expected_intent": "subsidy_information",
+    "entities": {}
+  },
+  {
+    "query": "I need a low interest loan of 2 lakh rupees for my small dairy farm.",
+    "expected_intent": "loan_information",
+    "entities": {
+      "occupation": "dairy farmer",
+      "loan_requirement": 200000.0
+    }
+  },
+  {
+    "query": "Can tenant farmers without land ownership get an agricultural loan?",
+    "expected_intent": "loan_eligibility",
+    "entities": {
+      "occupation": "tenant farmer"
+    }
+  },
+  {
+    "query": "What is the monthly EMI if I borrow 100000 at 4 percent interest for 3 years?",
+    "expected_intent": "loan_calculation",
+    "entities": {
+      "loan_requirement": 100000.0
+    }
+  },
+  {
+    "query": "Are there any emergency financial grants for flood affected farmers in Malda district?",
+    "expected_intent": "financial_assistance",
+    "entities": {
+      "district": "Malda",
+      "state": "West Bengal"
+    }
+  },
+  {
+    "query": "How can a new cultivator register in the state farmer database?",
+    "expected_intent": "farmer_registration",
+    "entities": {}
+  },
+  {
+    "query": "Please update my annual income to 240000 and my state to West Bengal.",
+    "expected_intent": "profile_update",
+    "entities": {
+      "annual_income": 240000.0,
+      "state": "West Bengal"
+    }
+  },
+  {
+    "query": "Where is the nearest Krishi Vigyan Kendra or block agriculture office in Nadia?",
+    "expected_intent": "nearest_agency",
+    "entities": {
+      "district": "Nadia",
+      "state": "West Bengal"
+    }
+  },
+  {
+    "query": "What is the recommended sowing period and fertilizer for mustard crop?",
+    "expected_intent": "crop_information",
+    "entities": {
+      "crop": "mustard"
+    }
+  },
+  {
+    "query": "The local bank officer refused to accept my KCC application without a bribe.",
+    "expected_intent": "complaint",
+    "entities": {}
+  },
+  {
+    "query": "What is the official toll-free customer care phone number for PM-KISAN helpline?",
+    "expected_intent": "contact_support",
+    "entities": {}
+  },
+  {
+    "query": "asdfghjkl zxcvbnm 987654321",
+    "expected_intent": "unknown",
+    "entities": {}
+  },
+  {
+    "query": "I am 35 years old living in Hooghly, my income is 180000 and I do tailoring.",
+    "expected_intent": "scheme_search",
+    "entities": {
+      "age": 35,
+      "district": "Hooghly",
+      "state": "West Bengal",
+      "annual_income": 180000.0,
+      "occupation": "tailor"
+    }
+  },
+  {
+    "query": "I don't know what to do here, please advise",
+    "expected_intent": "help",
+    "entities": {}
+  },
+  {
+    "query": "scheme?",
+    "expected_intent": "scheme_search",
+    "entities": {}
+  },
+  {
+    "query": "am I eligible",
+    "expected_intent": "scheme_eligibility",
+    "entities": {}
+  }
+]

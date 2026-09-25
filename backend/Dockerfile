@@ -2,9 +2,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including Tesseract OCR and Indic language packs
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libgl1 \
+    libglib2.0-0 \
+    tesseract-ocr \
+    tesseract-ocr-ben \
+    tesseract-ocr-hin \
+    tesseract-ocr-tam \
+    tesseract-ocr-tel \
+    tesseract-ocr-mar \
+    tesseract-ocr-guj \
+    tesseract-ocr-pan \
+    tesseract-ocr-kan \
+    tesseract-ocr-mal \
+    tesseract-ocr-ori \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
