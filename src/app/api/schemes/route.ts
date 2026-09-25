@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import type { VerifiedScheme } from '@prisma/client';
+import type { Prisma, VerifiedScheme } from '@prisma/client';
 import { SCHEME_CONFIG_VERSION } from '@/lib/schemeData';
 import { getActiveSchemes } from '@/lib/activeSchemes';
-import { ALL_VERIFIED_SCHEMES } from '@/lib/verifiedSchemesData';
+import { ALL_VERIFIED_SCHEMES, type VerifiedSchemeData } from '@/lib/verifiedSchemesData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -16,22 +16,34 @@ export async function GET(request: NextRequest) {
   const activeLendingSchemes = await getActiveSchemes();
 
   // Query verified directory from DB (with fallback to static dataset)
-  let verifiedList: any[] = [];
+  let verifiedList: VerifiedSchemeData[] = [];
   try {
-    const whereClause: any = {};
+    const whereClause: Prisma.VerifiedSchemeWhereInput = {};
     if (level && level !== 'ALL') whereClause.level = level;
     if (state && state !== 'ALL') whereClause.state = state;
     if (category && category !== 'ALL') whereClause.category = category;
 
-    const dbSchemes = await prisma.verifiedScheme.findMany({
+    const dbSchemes: VerifiedScheme[] = await prisma.verifiedScheme.findMany({
       where: whereClause,
       orderBy: [{ level: 'asc' }, { state: 'asc' }, { name: 'asc' }],
     });
 
     if (dbSchemes && dbSchemes.length > 0) {
       verifiedList = dbSchemes.map((s: VerifiedScheme) => ({
-        ...s,
+        code: s.code,
+        slug: s.slug,
+        name: s.name,
+        nameHi: s.nameHi ?? undefined,
+        level: s.level as 'CENTRAL' | 'STATE_UT',
+        state: s.state,
+        category: s.category as VerifiedSchemeData['category'],
+        typeLabel: s.typeLabel,
+        eligibility: s.eligibility,
         documents: JSON.parse(s.documentsJson),
+        officialRoute: s.officialRoute,
+        officialSourceUrl: s.officialSourceUrl,
+        verifiedAt: s.verifiedAt,
+        lastVerifiedDate: s.lastVerifiedDate,
       }));
     } else {
       verifiedList = ALL_VERIFIED_SCHEMES;
